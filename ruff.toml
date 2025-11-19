@@ -1,0 +1,23 @@
+preview = true
+
+# Optional: maximum line length (same as Black)
+line-length = 88
+
+[lint]
+# Enable important built-in ruff rule categories
+select = [
+    "E",      # Pycodestyle errors
+    "F",      # Pyflakes errors
+    "ASYNC",   # Async-specific errors (this catches missing await!)
+    "I"       # Import Sorting
+]
+
+# Exclude folders you never want linted
+exclude = [
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "__pycache__",
+    ".mypy_cache"
+]
