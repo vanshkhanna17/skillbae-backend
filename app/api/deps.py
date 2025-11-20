@@ -11,6 +11,7 @@ from starlette.status import HTTP_401_UNAUTHORIZED
 from app.core.jwt import decode_token
 from app.db.session import get_session
 from app.repo.user_repo import UserRepo
+from app.schemas.user import UserDetails
 from app.services.auth_service import AuthService
 from app.services.user_service import UserService
 
@@ -38,7 +39,7 @@ async def get_current_user(
     #   - Extracts the token string
     #   - Passes it as the `token` argument here
     repo: UserRepo = Depends(get_user_repo),
-):
+) -> UserDetails:
     token_payload = decode_token(token)
     if token_payload is None:
         raise HTTPException(
@@ -60,4 +61,4 @@ async def get_current_user(
             detail="User not found",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return user
+    return UserDetails.model_validate(user)

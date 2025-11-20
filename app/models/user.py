@@ -16,7 +16,7 @@ class User(Base):
     last_name: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     avatar_url: Mapped[str | None] = mapped_column(String, nullable=True)
-    profile: Mapped[str | None] = mapped_column(String, nullable=True, max_length=100)
+    profile: Mapped[str | None] = mapped_column(String(100), nullable=True)
     experience: Mapped[float | None] = mapped_column(
         DECIMAL(5, 1),
         nullable=True,
