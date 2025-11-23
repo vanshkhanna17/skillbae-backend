@@ -10,6 +10,7 @@ from starlette.status import HTTP_401_UNAUTHORIZED
 
 from app.core.jwt import decode_token
 from app.db.session import get_session
+from app.repo.refresh_token_repo import RefreshTokenRepo
 from app.repo.user_repo import UserRepo
 from app.schemas.user import UserDetails
 from app.services.auth_service import AuthService
@@ -24,12 +25,19 @@ async def get_user_repo(
     return UserRepo(session)
 
 
+async def get_refresh_token_repo(session: AsyncSession = Depends(get_session)):
+    return RefreshTokenRepo(session)
+
+
 async def get_user_service(repo: UserRepo = Depends(get_user_repo)):
     return UserService(repo)
 
 
-async def get_auth_service(repo: UserRepo = Depends(get_user_repo)):
-    return AuthService(repo)
+async def get_auth_service(
+    repo: UserRepo = Depends(get_user_repo),
+    refresh_repo: RefreshTokenRepo = Depends(get_refresh_token_repo),
+):
+    return AuthService(repo, refresh_repo)
 
 
 async def get_current_user(
@@ -47,7 +55,7 @@ async def get_current_user(
             detail="Invalid or expired authentication token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    user_id: Optional[str] = token_payload.get("sub")
+    user_id: Optional[str] = token_payload["sub"] if token_payload["sub"] else None
     if user_id is None:
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
