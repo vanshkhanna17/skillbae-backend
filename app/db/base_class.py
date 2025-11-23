@@ -1,3 +1,8 @@
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase, declared_attr
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+
+    @declared_attr.directive
+    def __tablename__(cls) -> str:
+        return cls.__name__.lower()

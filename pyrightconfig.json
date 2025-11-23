@@ -1,0 +1,24 @@
+{
+  "typeCheckingMode": "strict",
+  "useLibraryCodeForTypes": true,
+
+  // Catch missing awaits
+  "reportUnusedCoroutine": "error",
+
+  // Suppress noisy "unknown" warnings from dynamic models and dicts
+  "reportUnknownArgumentType": "none",
+  "reportUnknownMemberType": "none",
+  "reportUnknownVariableType": "none",
+  "reportUnknownParameterType": "none",
+
+  // Suppress SQLAlchemy __tablename__ and Column typing mismatches
+  "reportAssignmentType": "none",
+
+  // Optional: suppress list/dict generic typing noise
+  "reportMissingTypeArgument": "none",
+
+  // Keep other useful strict checks on
+  "reportInvalidTypeForm": "warning",
+  "reportIncompatibleMethodOverride": "warning",
+  "reportUntypedFunctionDecorator": "none"
+}
