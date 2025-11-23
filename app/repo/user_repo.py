@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -33,12 +33,12 @@ class UserRepo:
             await self.session.rollback()
             raise ValueError("Email already exists")
 
-    async def get_user_by_id(self, user_id: int) -> User | None:
+    async def get_user_by_id(self, user_id: int) -> Optional[User]:
         query = select(User).where(User.id == user_id)
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
-    async def get_user_by_email(self, user_email: str) -> User | None:
+    async def get_user_by_email(self, user_email: str) -> Optional[User]:
         query = select(User).where(User.email == user_email)
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
