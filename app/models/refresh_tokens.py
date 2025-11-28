@@ -27,13 +27,14 @@ Fields:
     - meta: optional free-text (user-agent + ip) for auditing
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base_class import Base
+from app.models.user import utc_now
 
 
 class RefreshTokens(Base):
@@ -52,7 +53,7 @@ class RefreshTokens(Base):
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now(timezone.utc), nullable=False
+        DateTime, default=utc_now, nullable=False
     )
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     is_revoked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

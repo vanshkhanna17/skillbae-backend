@@ -7,6 +7,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base_class import Base
 
 
+def utc_now():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -15,9 +19,7 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String, nullable=False)
     first_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     last_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now(timezone.utc)
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
     avatar_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     profile: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     experience: Mapped[Optional[float]] = mapped_column(

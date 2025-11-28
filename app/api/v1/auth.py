@@ -31,8 +31,12 @@ async def login(
         samesite=settings.cookie_samesite.value,
         path=settings.cookie_path,
         max_age=60 * 60 * 24 * settings.refresh_token_expire_days,
+        domain=settings.cookie_domain,
     )
-    return {"access_token": tokens["access_token"], "token_type": "bearer"}
+    return {
+        "access_token": tokens["access_token"],
+        "token_type": "bearer",
+    }
 
 
 @router.post("/refresh")
@@ -51,6 +55,7 @@ async def refresh_token(
         samesite=settings.cookie_samesite.value,
         path=settings.cookie_path,
         max_age=60 * 60 * 24 * settings.refresh_token_expire_days,
+        domain=settings.cookie_domain,
     )
     return {"access_token": new_tokens["access_token"], "token_type": "bearer"}
 
@@ -63,5 +68,12 @@ async def logout(
 ):
     refresh_token = request.cookies.get("auth_refresh_token")
     await auth_service.logout(refresh_token)
-    response.delete_cookie(key="auth_refresh_token", path=settings.cookie_path)
-    return {"logout": True, "message": "logout successful"}
+    response.delete_cookie(
+        key="auth_refresh_token",
+        path=settings.cookie_path,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite.value,
+        httponly=True,
+    )
+    response.status_code = 204
+    return response

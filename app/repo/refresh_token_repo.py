@@ -45,7 +45,7 @@ class RefreshTokenRepo:
             token_hash=token_hash,
             user_id=user_id,
             expires_at=expires_at,
-            meta=meta,
+            meta_data=meta,
         )
         self.session.add(refresh_token)
         await self.session.commit()
