@@ -1,4 +1,4 @@
-start local server - "uvicorn app.main:app --reload"
+start local server - "uvicorn app.main:app --host localhost --port 8000 --reload"
 
 http://127.0.0.1:8000 → local server
 

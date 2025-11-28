@@ -1,15 +1,15 @@
 from enum import Enum
 from typing import Any
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 from pydantic_settings.main import SettingsConfigDict
 
 
 class SameSiteEnum(str, Enum):
-    lax = "lax"
-    trict = "strict"
-    none = "none"
+    lax = "Lax"
+    strict = "Strict"
+    none = "None"
 
     @classmethod
     def _missing_(cls, value: Any):
@@ -39,6 +39,15 @@ class Settings(BaseSettings):
     cookie_secure: bool
     cookie_samesite: SameSiteEnum = Field(default=SameSiteEnum.lax)
     cookie_path: str
+    backend_cors_origins: str
+    cookie_domain: str
+
+    # FIX: Convert comma-separated string into Python list
+    @field_validator("backend_cors_origins", mode="after")
+    def convert_cors_to_list(cls, value: Any):
+        if not value:
+            return []
+        return [origin.strip() for origin in value.split(",") if origin.strip()]
 
 
 settings = Settings()  # pyright: ignore[reportCallIssue]

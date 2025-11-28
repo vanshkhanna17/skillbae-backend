@@ -18,7 +18,6 @@ It does NOT:
  - Manage database sessions outside repos
 """
 
-from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import HTTPException, status
@@ -29,6 +28,7 @@ from app.core.security import (
     create_hashed_token,
     verify_password,
 )
+from app.models.user import utc_now
 from app.repo.refresh_token_repo import RefreshTokenRepo
 from app.repo.user_repo import UserRepo
 from app.schemas.user import UserCreate, UserInDb
@@ -131,9 +131,7 @@ class AuthService:
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
             )
 
-        if old_refresh_token.is_revoked or old_refresh_token.expires_at < datetime.now(
-            timezone.utc
-        ):
+        if old_refresh_token.is_revoked or old_refresh_token.expires_at < utc_now():
             sub = decoded_token.get("sub") if decoded_token else None
             if sub is not None:
                 await self.refresh_repo.revoke_all_refresh_tokens_for_user(int(sub))

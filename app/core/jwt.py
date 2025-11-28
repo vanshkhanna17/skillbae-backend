@@ -42,8 +42,9 @@ def create_jwt_token(user_id: str, expire_minutes: Optional[int] = None) -> str:
         expire_minutes = settings.access_token_expire_minutes
 
     expire = datetime.now(timezone.utc) + timedelta(minutes=expire_minutes)
+    exp_timestamp = int(expire.timestamp())
 
-    payload = {"sub": user_id, "exp": expire}
+    payload = {"sub": user_id, "exp": exp_timestamp}
 
     encoded_jwt = jwt.encode(payload, settings.secret_key, settings.algorithm)
 
@@ -56,12 +57,14 @@ def create_refresh_token(
     if expire_days is None:
         expire_days = settings.refresh_token_expire_days
     expire = datetime.now(timezone.utc) + timedelta(days=expire_days)
+    exp_timestamp = int(expire.timestamp())
     jti = str(uuid4())
-    payload = {"sub": user_id, "jti": jti, "exp": expire}
+    payload = {"sub": user_id, "jti": jti, "exp": exp_timestamp}
     refresh_token = jwt.encode(
         payload, settings.refresh_token_secret_key, settings.algorithm
     )
-    return refresh_token, jti, expire
+    expires_at_naive = expire.replace(tzinfo=None)
+    return refresh_token, jti, expires_at_naive
 
 
 def decode_token(token: str) -> Optional[AccessTokenPayload]:
