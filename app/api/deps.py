@@ -5,41 +5,58 @@ from typing import Optional
 
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
+from fastapi.security.oauth2 import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 from app.core.jwt import decode_token
 from app.db.session import get_session
+from app.repo.feed_repo import FeedRepo
 from app.repo.refresh_token_repo import RefreshTokenRepo
 from app.repo.user_repo import UserRepo
 from app.schemas.user import UserDetails
 from app.services.auth_service import AuthService
+from app.services.feed_service import FeedService
 from app.services.user_service import UserService
+from app.structures.tokens import AccessTokenPayload
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme: OAuth2PasswordBearer = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
+# repos
 async def get_user_repo(
     session: AsyncSession = Depends(get_session),
-):
+) -> UserRepo:
     return UserRepo(session)
 
 
-async def get_refresh_token_repo(session: AsyncSession = Depends(get_session)):
+async def get_refresh_token_repo(
+    session: AsyncSession = Depends(get_session),
+) -> RefreshTokenRepo:
     return RefreshTokenRepo(session)
 
 
-async def get_user_service(repo: UserRepo = Depends(get_user_repo)):
+async def get_feed_repo(session: AsyncSession = Depends(get_session)) -> FeedRepo:
+    return FeedRepo(session)
+
+
+# services
+async def get_user_service(repo: UserRepo = Depends(get_user_repo)) -> UserService:
     return UserService(repo)
 
 
 async def get_auth_service(
     repo: UserRepo = Depends(get_user_repo),
     refresh_repo: RefreshTokenRepo = Depends(get_refresh_token_repo),
-):
+) -> AuthService:
     return AuthService(repo, refresh_repo)
 
 
+async def get_feeds_service(repo: FeedRepo = Depends(get_feed_repo)) -> FeedService:
+    return FeedService(repo)
+
+
+# functions
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     # ↑ FastAPI automatically:
@@ -48,7 +65,7 @@ async def get_current_user(
     #   - Passes it as the `token` argument here
     repo: UserRepo = Depends(get_user_repo),
 ) -> UserDetails:
-    token_payload = decode_token(token)
+    token_payload: AccessTokenPayload | None = decode_token(token)
     if token_payload is None:
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,

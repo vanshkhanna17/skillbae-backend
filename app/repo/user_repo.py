@@ -10,7 +10,7 @@ from app.schemas.user import UserCreate
 
 class UserRepo:
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession) -> None:
         self.session: AsyncSession = session
 
     async def create_user(self, data: UserCreate, hashed_password: str) -> User:

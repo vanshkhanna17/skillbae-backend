@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     cookie_path: str
     backend_cors_origins: str
     cookie_domain: str
+    debug: bool
 
     # FIX: Convert comma-separated string into Python list
     @field_validator("backend_cors_origins", mode="after")

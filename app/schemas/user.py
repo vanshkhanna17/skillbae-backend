@@ -4,7 +4,9 @@ import re
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+from pydantic import EmailStr, Field, model_validator
+
+from app.schemas.base import BaseSchema
 
 COMMON_PASSWORDS = {
     "password",
@@ -16,10 +18,6 @@ COMMON_PASSWORDS = {
     "iloveyou",
     "admin",
 }
-
-
-class BaseSchema(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
 
 
 class UserDetails(BaseSchema):
