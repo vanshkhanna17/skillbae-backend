@@ -30,4 +30,4 @@ class Post(Base):
     comments: Mapped[list["Comments"]] = relationship(
         back_populates="post", cascade="all, delete-orphan"
     )
-    category: Mapped["Categories"] = relationship(back_populates="post")
+    category: Mapped["Categories"] = relationship(viewonly=True)

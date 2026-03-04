@@ -40,3 +40,11 @@ async def create_comment(
 ) -> Comments:
     data.user_id = current_user.id
     return await feed_service.create_comment(data)
+
+
+@router.get("/categories")
+async def get_all_categories(
+    current_user: UserDetails = Depends(get_current_user),
+    feed_service: FeedService = Depends(get_feeds_service),
+):
+    return await feed_service.get_categories()

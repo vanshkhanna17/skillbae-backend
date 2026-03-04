@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Sequence
 
+from app.models.categories import Categories
 from app.models.comments import Comments
 from app.models.posts import Post
 from app.repo.feed_repo import FeedRepo
@@ -24,3 +25,6 @@ class FeedService:
 
     async def create_comment(self, data: CommentCreate) -> Comments:
         return await self.repo.create_comment(data)
+
+    async def get_categories(self) -> Sequence[Categories]:
+        return await self.repo.get_categories()

@@ -32,7 +32,10 @@ class User(Base):
     )
 
     categories: Mapped[list["Categories"]] = relationship(
-        secondary=user_categories, back_populates="users"
+        "Categories", secondary=user_categories, back_populates="users"
+    )
+    comments: Mapped[list["Comments"]] = relationship(
+        "Comments", back_populates="user", cascade="all, delete-orphan"
     )
 
     @property

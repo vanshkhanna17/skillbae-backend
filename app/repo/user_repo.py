@@ -1,10 +1,11 @@
 from typing import Any, Optional
 
-from sqlalchemy import select
+from sqlalchemy import delete, insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
+from app.models.user_categories import user_categories
 from app.schemas.user import UserCreate
 
 
@@ -66,3 +67,29 @@ class UserRepo:
         await self.session.delete(user)
         await self.session.commit()
         return True
+
+    async def add_categories(self, user_id: int, category_ids: list[int]):
+        await self.session.execute(
+            delete(user_categories).where(user_categories.c.user_id == user_id)
+        )
+
+        return await self.session.execute(
+            insert(user_categories).values(
+                [{"user_id": user_id, "category_id": cid} for cid in category_ids]
+            )
+        )
+
+    async def add_category(self, user_id: int, category_id: int):
+        return await self.session.execute(
+            insert(user_categories).values(
+                {"user_id": user_id, "category_id": category_id}
+            )
+        )
+
+    async def get_categories(self, user_id: int):
+        categories_result = await self.session.execute(
+            select(user_categories.c.category_id).where(
+                user_categories.c.user_id == user_id
+            )
+        )
+        return categories_result.scalars().all()

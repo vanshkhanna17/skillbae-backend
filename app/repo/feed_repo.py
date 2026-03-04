@@ -5,6 +5,7 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.categories import Categories
 from app.models.comments import Comments
 from app.models.posts import Post
 from app.models.user_categories import user_categories
@@ -72,3 +73,7 @@ class FeedRepo:
         except DatabaseError as e:
             await self.session.rollback()
             raise e
+
+    async def get_categories(self) -> Sequence[Categories]:
+        result = await self.session.execute(select(Categories))
+        return result.scalars().all()

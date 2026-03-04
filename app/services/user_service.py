@@ -31,3 +31,12 @@ class UserService:
     async def delete_user(self, user_id: int) -> bool:
         deleted = await self.repo.delete_user(user_id)
         return deleted
+
+    async def add_categories(self, user_id: int, category_ids: list[int]):
+        return await self.repo.add_categories(user_id, category_ids)
+
+    async def add_category(self, user_id: int, category_id: int):
+        return await self.repo.add_category(user_id, category_id)
+
+    async def get_categories(self, user_id: int):
+        return await self.repo.get_categories(user_id)
