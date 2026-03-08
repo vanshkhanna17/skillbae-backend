@@ -5,7 +5,7 @@ from app.core.config import settings
 from app.schemas.user import UserCreate, UserDetails, UserInDb, UserLogin
 from app.services.auth_service import AuthService
 
-router = APIRouter(prefix="/auth", tags=["Auth"])
+router: APIRouter = APIRouter()
 
 
 @router.post("/register", response_model=UserDetails)

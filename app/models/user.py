@@ -1,10 +1,15 @@
 from datetime import datetime, timezone
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import DECIMAL, DateTime, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base_class import Base
+from app.models.user_categories import user_categories
+
+if TYPE_CHECKING:
+    from app.models.categories import Categories
+    from app.models.comments import Comments
 
 
 def utc_now():
@@ -14,7 +19,7 @@ def utc_now():
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String, nullable=False)
     first_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
@@ -25,6 +30,13 @@ class User(Base):
     experience: Mapped[Optional[float]] = mapped_column(
         DECIMAL(5, 1),
         nullable=True,
+    )
+
+    categories: Mapped[list["Categories"]] = relationship(
+        "Categories", secondary=user_categories, back_populates="users"
+    )
+    comments: Mapped[list["Comments"]] = relationship(
+        "Comments", back_populates="user", cascade="all, delete-orphan"
     )
 
     @property
