@@ -10,6 +10,7 @@ from app.models.user import utc_now
 if TYPE_CHECKING:
     from app.models.categories import Categories
     from app.models.comments import Comments
+    from app.models.user import User
 
 
 class Post(Base):
@@ -31,3 +32,4 @@ class Post(Base):
         back_populates="post", cascade="all, delete-orphan"
     )
     category: Mapped["Categories"] = relationship(viewonly=True)
+    user: Mapped["User"] = relationship(viewonly=True)

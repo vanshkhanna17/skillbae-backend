@@ -10,7 +10,7 @@ from app.schemas.feed import CommentCreate, CommentRead, PostCreate, PostRead
 from app.schemas.user import UserDetails
 from app.services.feed_service import FeedService
 
-router: APIRouter = APIRouter(prefix="/feed", tags=["Feed"])
+router: APIRouter = APIRouter()
 
 
 @router.get("/posts", response_model=list[PostRead])

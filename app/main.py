@@ -20,9 +20,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth_router, tags=["Auth"])
-app.include_router(user_router, tags=["User"])
-app.include_router(feed_router, tags=["Feed"])
+app.include_router(auth_router, tags=["Auth"], prefix="/auth")
+app.include_router(user_router, tags=["User"], prefix="/users")
+app.include_router(feed_router, tags=["Feed"], prefix="/feed")
 
 
 @app.get("/")

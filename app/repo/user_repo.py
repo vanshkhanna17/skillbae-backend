@@ -72,12 +72,14 @@ class UserRepo:
         await self.session.execute(
             delete(user_categories).where(user_categories.c.user_id == user_id)
         )
-
-        return await self.session.execute(
-            insert(user_categories).values(
-                [{"user_id": user_id, "category_id": cid} for cid in category_ids]
+        if category_ids:
+            await self.session.execute(
+                insert(user_categories).values(
+                    [{"user_id": user_id, "category_id": cid} for cid in category_ids]
+                )
             )
-        )
+
+        await self.session.commit()
 
     async def add_category(self, user_id: int, category_id: int):
         return await self.session.execute(

@@ -9,6 +9,7 @@ from app.models.user_categories import user_categories
 
 if TYPE_CHECKING:
     from app.models.categories import Categories
+    from app.models.comments import Comments
 
 
 def utc_now():

@@ -4,6 +4,7 @@ from typing import Sequence
 from sqlalchemy import select, update
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.categories import Categories
 from app.models.comments import Comments
@@ -23,6 +24,11 @@ class FeedRepo:
             select(Post)
             .join(user_categories, Post.category_id == user_categories.c.category_id)
             .where(user_categories.c.user_id == user_id)
+            .options(
+                selectinload(Post.user),
+                selectinload(Post.comments).selectinload(Comments.user),
+                selectinload(Post.category),
+            )
         )
 
         if cursor:
@@ -46,7 +52,7 @@ class FeedRepo:
         try:
             self.session.add(new_post)
             await self.session.commit()
-            await self.session.refresh(new_post)
+            await self.session.refresh(new_post, ["user", "comments", "category"])
             return new_post
         except DatabaseError as e:
             await self.session.rollback()

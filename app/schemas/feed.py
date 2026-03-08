@@ -31,6 +31,7 @@ class PostCreate(BaseSchema):
 class PostRead(PostCreate):
     id: int
     publish_date: datetime
+    user: UserDetails
     comments: list[CommentRead]
     category: Category
 
