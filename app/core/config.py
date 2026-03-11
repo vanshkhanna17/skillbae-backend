@@ -28,7 +28,6 @@ class Settings(BaseSettings):
     app_name: str
     app_description: str
     app_version: str
-    debug: bool
     database_url: str
     database_sync_url: str
     secret_key: str

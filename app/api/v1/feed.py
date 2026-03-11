@@ -6,7 +6,13 @@ from fastapi import APIRouter, Depends, Query
 from app.api.deps import get_current_user, get_feeds_service
 from app.models.comments import Comments
 from app.models.posts import Post
-from app.schemas.feed import CommentCreate, CommentRead, PostCreate, PostRead
+from app.schemas.feed import (
+    CategoryRead,
+    CommentCreate,
+    CommentRead,
+    PostCreate,
+    PostRead,
+)
 from app.schemas.user import UserDetails
 from app.services.feed_service import FeedService
 
@@ -38,11 +44,10 @@ async def create_comment(
     current_user: UserDetails = Depends(get_current_user),
     feed_service: FeedService = Depends(get_feeds_service),
 ) -> Comments:
-    data.user_id = current_user.id
-    return await feed_service.create_comment(data)
+    return await feed_service.create_comment(current_user.id, data)
 
 
-@router.get("/categories")
+@router.get("/categories", response_model=CategoryRead)
 async def get_all_categories(
     current_user: UserDetails = Depends(get_current_user),
     feed_service: FeedService = Depends(get_feeds_service),

@@ -1,9 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.v1.auth import router as auth_router
 from app.api.v1.feed import router as feed_router
 from app.api.v1.users import router as user_router
+from app.core import limiter
 from app.core.config import settings
 
 app = FastAPI(
@@ -19,6 +21,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
 
 app.include_router(auth_router, tags=["Auth"], prefix="/auth")
 app.include_router(user_router, tags=["User"], prefix="/users")

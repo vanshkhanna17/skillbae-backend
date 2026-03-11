@@ -1,0 +1,8 @@
+ruff
+isort
+pytest
+pytest-asyncio
+httpx
+
+pip-tools
+pip-chill

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Request, Response
 
 from app.api.deps import get_auth_service
 from app.core.config import settings
+from app.core.limiter import limiter
 from app.schemas.user import UserCreate, UserDetails, UserInDb, UserLogin
 from app.services.auth_service import AuthService
 
@@ -9,15 +10,21 @@ router: APIRouter = APIRouter()
 
 
 @router.post("/register", response_model=UserDetails)
+@limiter.limit("3/minute")
 async def register_user(
-    data: UserCreate, auth_service: AuthService = Depends(get_auth_service)
+    request: Request,
+    data: UserCreate,
+    response: Response,
+    auth_service: AuthService = Depends(get_auth_service),
 ) -> UserInDb:
     user = await auth_service.register(data)
     return user
 
 
 @router.post("/login", response_model=dict[str, str])
+@limiter.limit("5/minute")
 async def login(
+    request: Request,
     creds: UserLogin,
     response: Response,
     auth_service: AuthService = Depends(get_auth_service),
@@ -40,6 +47,7 @@ async def login(
 
 
 @router.post("/refresh")
+@limiter.limit("10/minute")
 async def refresh_token(
     request: Request,
     response: Response,
@@ -61,6 +69,7 @@ async def refresh_token(
 
 
 @router.post("/logout")
+@limiter.limit("10/minute")
 async def logout(
     request: Request,
     response: Response,

@@ -69,8 +69,8 @@ class FeedRepo:
         await self.session.commit()
         return result.scalar_one_or_none()
 
-    async def create_comment(self, data: CommentCreate) -> Comments:
-        new_comment = Comments(**data.model_dump())
+    async def create_comment(self, user_id: int, data: CommentCreate) -> Comments:
+        new_comment = Comments(user_id=user_id, **data.model_dump())
         try:
             self.session.add(new_comment)
             await self.session.commit()

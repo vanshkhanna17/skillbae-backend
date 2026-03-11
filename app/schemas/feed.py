@@ -8,7 +8,6 @@ from app.schemas.user import UserDetails
 class CommentCreate(BaseSchema):
     comment_text: str
     post_id: int
-    user_id: int
 
 
 class CommentRead(BaseSchema):
@@ -18,7 +17,7 @@ class CommentRead(BaseSchema):
     user: UserDetails
 
 
-class Category(BaseSchema):
+class CategoryRead(BaseSchema):
     id: int
     category: str
 
@@ -33,7 +32,7 @@ class PostRead(PostCreate):
     publish_date: datetime
     user: UserDetails
     comments: list[CommentRead]
-    category: Category
+    category: CategoryRead
 
 
 class PostUpdate(BaseSchema):

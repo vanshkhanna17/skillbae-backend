@@ -23,8 +23,8 @@ class FeedService:
     async def create_post(self, user_id: int, data: PostCreate) -> Post:
         return await self.repo.create_post(user_id, data)
 
-    async def create_comment(self, data: CommentCreate) -> Comments:
-        return await self.repo.create_comment(data)
+    async def create_comment(self, user_id: int, data: CommentCreate) -> Comments:
+        return await self.repo.create_comment(user_id, data)
 
     async def get_categories(self) -> Sequence[Categories]:
         return await self.repo.get_categories()
