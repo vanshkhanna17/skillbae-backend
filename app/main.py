@@ -5,8 +5,8 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.api.v1.auth import router as auth_router
 from app.api.v1.feed import router as feed_router
 from app.api.v1.users import router as user_router
-from app.core import limiter
 from app.core.config import settings
+from app.core.limiter import limiter
 
 app = FastAPI(
     title=settings.app_name,
