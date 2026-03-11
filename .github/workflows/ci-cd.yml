@@ -1,0 +1,31 @@
+name: SkillBae Backend CI CD
+on:
+  push:
+    branches: ["main", "staging"]
+  pull_request:
+    branches: ["main", "staging"]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_SYNC_URL: ${{ secrets.DATABASE_SYNC_URL }}
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      REFRESH_TOKEN_SECRET_KEY: ${{ secrets.REFRESH_TOKEN_SECRET_KEY }}
+      ALGORITHM: ${{ secrets.ALGORITHM }}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${{ secrets.REFRESH_TOKEN_EXPIRE_DAYS }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/serup-python
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip intsall -r requirements.txt
+      - name: Lint with ruff
+        run: ruff check .
+      - name: Run tests
+        run: pytest
