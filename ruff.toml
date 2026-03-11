@@ -20,7 +20,8 @@ exclude = [
     "dist",
     "__pycache__",
     ".mypy_cache",
-    "app/db/base.py"
+    "app/db/base.py",
+    "alembic/"
 ]
 
 [format]
