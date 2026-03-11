@@ -1,12 +1,11 @@
-from logging.config import fileConfig
 import os
+from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
 from dotenv import load_dotenv
+from sqlalchemy import engine_from_config, pool
+
 from alembic import context
-from app.db.base_class import Base
-from app import models
+from app.db.base import Base
 
 load_dotenv()
 # this is the Alembic Config object, which provides
@@ -30,7 +29,7 @@ target_metadata = Base.metadata
 # ... etc.
 
 # --- NEW: Load DATABASE_URL from .env ---
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_SYNC_URL")
 if not DATABASE_URL:
     raise Exception("DATABASE_URL not found in .env")
 
