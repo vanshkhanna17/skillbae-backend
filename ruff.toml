@@ -1,7 +1,16 @@
 preview = true
+line-length = 88 # Optional: maximum line length (same as Black)
 
-# Optional: maximum line length (same as Black)
-line-length = 88
+# Global excludes — Ruff won't touch these at all
+exclude = [
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "__pycache__",
+    ".mypy_cache",
+    "alembic/"
+]
 
 [lint]
 # Enable important built-in ruff rule categories
@@ -11,18 +20,8 @@ select = [
     "ASYNC",   # Async-specific errors (this catches missing await!)
     "I"       # Import Sorting
 ]
-
 # Exclude folders you never want linted
-exclude = [
-    ".venv",
-    "venv",
-    "build",
-    "dist",
-    "__pycache__",
-    ".mypy_cache",
-    "app/db/base.py",
-    "alembic/"
-]
+exclude = ["app/db/base.py"]
 
 [format]
-exclude = ["app/db/base.py", "alembic/"]
+exclude = ["app/db/base.py"]
