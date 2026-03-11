@@ -24,4 +24,4 @@ exclude = [
 ]
 
 [format]
-exclude = ["app/db/base.py"]
+exclude = ["app/db/base.py", "alembic/"]

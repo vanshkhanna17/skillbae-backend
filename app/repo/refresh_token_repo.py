@@ -71,7 +71,7 @@ class RefreshTokenRepo:
 
     async def revoke_all_refresh_tokens_for_user(self, user_id: int):
         query = select(RefreshTokens).where(
-            RefreshTokens.user_id == user_id, RefreshTokens.is_revoked == False
+            RefreshTokens.user_id == user_id, RefreshTokens.is_revoked.is_(False)
         )
         result = await self.session.execute(query)
         tokens = result.scalars().all()
