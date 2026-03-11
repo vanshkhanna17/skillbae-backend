@@ -17,6 +17,15 @@ jobs:
       ALGORITHM: ${{ secrets.ALGORITHM }}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
       REFRESH_TOKEN_EXPIRE_DAYS: ${{ secrets.REFRESH_TOKEN_EXPIRE_DAYS }}
+      COOKIE_SECURE: ${{ secrets.COOKIE_SECURE }}
+      COOKIE_SAMESITE: ${{ secrets.COOKIE_SAMESITE }}
+      COOKIE_PATH: ${{ secrets.COOKIE_PATH }}
+      COOKIE_DOMAIN: ${{ secrets.COOKIE_DOMAIN }}
+      BACKEND_CORS_ORIGINS: ${{ secrets.BACKEND_CORS_ORIGINS }}
+      DEBUG: ${{ secrets.DEBUG }}
+      APP_NAME: ${{ secrets.APP_NAME }}
+      APP_DESCRIPTION: ${{ secrets.APP_DESCRIPTION }}
+      APP_VERSION: ${{ secrets.APP_VERSION }}
 
     steps:
       - uses: actions/checkout@v4
