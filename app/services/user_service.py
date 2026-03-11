@@ -15,7 +15,7 @@ class UserService:
         self, user_email: str, user_id: Optional[int] = None
     ) -> UserDetails:
         if user_id:
-            user = self.repo.get_user_by_id(user_id)
+            user = await self.repo.get_user_by_id(user_id)
         else:
             user = await self.repo.get_user_by_email(user_email)
         if not user:
