@@ -1,6 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.middleware import SlowAPIMiddleware
+from starlette.middleware.base import RequestResponseEndpoint
+from starlette.responses import Response
 
 from app.api.v1.auth import router as auth_router
 from app.api.v1.feed import router as feed_router
@@ -25,6 +27,18 @@ app.add_middleware(
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 
+
+@app.middleware("http")
+async def add_cache_control(
+    request: Request, call_next: RequestResponseEndpoint
+) -> Response:
+    response = await call_next(request)
+    # default to no-store for all API responses
+    if "Cache-Control" not in response.headers:
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 app.include_router(auth_router, tags=["Auth"], prefix="/auth")
 app.include_router(user_router, tags=["User"], prefix="/users")
 app.include_router(feed_router, tags=["Feed"], prefix="/feed")
@@ -37,4 +51,4 @@ def root():
 
 @app.get("/ping")
 async def ping():
-    return {"ping": "pong"}
+    return {"success": True}

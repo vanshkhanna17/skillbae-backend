@@ -9,7 +9,7 @@ from app.services.auth_service import AuthService
 router: APIRouter = APIRouter()
 
 
-@router.post("/register", response_model=UserDetails)
+@router.post("/register", response_model=UserDetails, status_code=201)
 @limiter.limit("3/minute")
 async def register_user(
     request: Request,
