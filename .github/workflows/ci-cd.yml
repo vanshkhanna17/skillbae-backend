@@ -9,6 +9,22 @@ jobs:
   lint-and-test:
     runs-on: ubuntu-latest
 
+    # ─── Test Database Service ───────────────────────────────
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: skillbae_test
+          POSTGRES_USER: skillbae_admin
+          POSTGRES_PASSWORD: SkillBaeAdmin
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DATABASE_SYNC_URL: ${{ secrets.DATABASE_SYNC_URL }}
@@ -39,4 +55,4 @@ jobs:
       - name: Lint with ruff
         run: ruff check .
       - name: Run tests
-        run: pytest
+        run: pytest tests/ -v

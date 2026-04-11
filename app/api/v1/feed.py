@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Sequence
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 
 from app.api.deps import get_current_user, get_feeds_service
 from app.models.comments import Comments
@@ -16,7 +16,7 @@ from app.schemas.feed import (
 from app.schemas.user import UserDetails
 from app.services.feed_service import FeedService
 
-router: APIRouter = APIRouter()
+router: APIRouter = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("/posts", response_model=list[PostRead])
@@ -47,9 +47,20 @@ async def create_comment(
     return await feed_service.create_comment(current_user.id, data)
 
 
-@router.get("/categories", response_model=CategoryRead)
+@router.get("/categories", response_model=list[CategoryRead])
 async def get_all_categories(
-    current_user: UserDetails = Depends(get_current_user),
+    response: Response,
     feed_service: FeedService = Depends(get_feeds_service),
 ):
+    response.headers["Cache-Control"] = "public, max-age=900"
     return await feed_service.get_categories()
+
+
+@router.get("/post-comments/{post_id}", response_model=list[CommentRead])
+async def get_post_comments(
+    post_id: int,
+    feed_service: FeedService = Depends(get_feeds_service),
+    cursor: datetime | None = Query(None, description="Pagination cursor"),
+    limit: int = Query(20, ge=1, le=100, description="Number of comments to return"),
+) -> Sequence[Comments]:
+    return await feed_service.get_post_comments(post_id, cursor, limit)

@@ -1,7 +1,8 @@
 from typing import Any, Optional
 
-from fastapi import HTTPException, status
+from fastapi import status
 
+from app.core.exceptions import AppException
 from app.repo.user_repo import UserRepo
 from app.schemas.user import UserDetails
 
@@ -15,12 +16,14 @@ class UserService:
         self, user_email: str, user_id: Optional[int] = None
     ) -> UserDetails:
         if user_id:
-            user = await self.repo.get_user_by_id(user_id)
+            user = await self.repo.get_by_id(user_id)
         else:
             user = await self.repo.get_user_by_email(user_email)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            raise AppException(
+                status_code=status.HTTP_409_CONFLICT,
+                error="Not Found",
+                message="User doesn't exist",
             )
         return UserDetails.model_validate(user)
 
@@ -29,7 +32,7 @@ class UserService:
         return UserDetails.model_validate(updated)
 
     async def delete_user(self, user_id: int) -> bool:
-        deleted = await self.repo.delete_user(user_id)
+        deleted = await self.repo.delete(user_id)
         return deleted
 
     async def add_categories(self, user_id: int, category_ids: list[int]):

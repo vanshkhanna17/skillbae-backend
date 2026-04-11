@@ -3,13 +3,16 @@
 
 from typing import Optional
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_401_UNAUTHORIZED
 
+from app.core.exceptions import AppException
 from app.core.jwt import decode_token
 from app.db.session import get_session
+from app.models.user import User
+from app.repo.comments_repo import CommentsRepo
 from app.repo.feed_repo import FeedRepo
 from app.repo.refresh_token_repo import RefreshTokenRepo
 from app.repo.user_repo import UserRepo
@@ -39,6 +42,12 @@ async def get_feed_repo(session: AsyncSession = Depends(get_session)) -> FeedRep
     return FeedRepo(session)
 
 
+async def get_comments_repo(
+    session: AsyncSession = Depends(get_session),
+) -> CommentsRepo:
+    return CommentsRepo(session)
+
+
 # services
 async def get_user_service(repo: UserRepo = Depends(get_user_repo)) -> UserService:
     return UserService(repo)
@@ -51,8 +60,11 @@ async def get_auth_service(
     return AuthService(repo, refresh_repo)
 
 
-async def get_feeds_service(repo: FeedRepo = Depends(get_feed_repo)) -> FeedService:
-    return FeedService(repo)
+async def get_feeds_service(
+    feed_repo: FeedRepo = Depends(get_feed_repo),
+    comments_repo: CommentsRepo = Depends(get_comments_repo),
+) -> FeedService:
+    return FeedService(feed_repo, comments_repo)
 
 
 # functions
@@ -66,23 +78,26 @@ async def get_current_user(
 ) -> UserDetails:
     token_payload: AccessTokenPayload | None = decode_token(token)
     if token_payload is None:
-        raise HTTPException(
+        raise AppException(
             status_code=HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired authentication token",
+            error="Unauthorized",
+            message="Invalid or expired authentication token",
             headers={"WWW-Authenticate": "Bearer"},
         )
     user_id: Optional[str] = token_payload["sub"] if token_payload["sub"] else None
     if user_id is None:
-        raise HTTPException(
+        raise AppException(
             status_code=HTTP_401_UNAUTHORIZED,
-            detail="Token missing required user identifier",
+            error="Unauthorized",
+            message="Token missing required user identifier",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    user = await repo.get_user_by_id(int(user_id))
+    user: User | None = await repo.get_by_id(int(user_id))
     if not user:
-        raise HTTPException(
+        raise AppException(
             status_code=HTTP_401_UNAUTHORIZED,
-            detail="User not found",
+            error="Unauthorized",
+            message="User not found",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return UserDetails.model_validate(user)
