@@ -20,15 +20,16 @@ It does NOT:
 
 from typing import Optional
 
-from fastapi import HTTPException, status
+from fastapi import status
 
+from app.core.exceptions import AppException
 from app.core.jwt import create_jwt_token, create_refresh_token, decode_refresh_token
 from app.core.security import (
     create_hashed_password,
     create_hashed_token,
     verify_password,
 )
-from app.models.user import utc_now
+from app.models.user import User, utc_now
 from app.repo.refresh_token_repo import RefreshTokenRepo
 from app.repo.user_repo import UserRepo
 from app.schemas.user import UserCreate, UserInDb
@@ -39,16 +40,19 @@ class AuthService:
 
     def __init__(self, user_repo: UserRepo, refresh_repo: RefreshTokenRepo) -> None:
         self.user_repo: UserRepo = user_repo
-        self.refresh_repo = refresh_repo
+        self.refresh_repo: RefreshTokenRepo = refresh_repo
 
-    async def register(self, data: UserCreate):
-        existing_user = await self.user_repo.get_user_by_email(data.email)
+    async def register(self, data: UserCreate) -> UserInDb:
+        existing_user: User | None = await self.user_repo.get_user_by_email(data.email)
         if existing_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="User already exists"
+            raise AppException(
+                status_code=status.HTTP_409_CONFLICT,
+                error="Conflict",
+                message="User already exists",
+                field="email",
             )
-        hashed_password = create_hashed_password(data.password)
-        user = await self.user_repo.create_user(data, hashed_password)
+        hashed_password: str = create_hashed_password(data.password)
+        user: User = await self.user_repo.create(data, hashed_password=hashed_password)
         return UserInDb.model_validate(user)
 
     async def login(
@@ -56,15 +60,19 @@ class AuthService:
     ) -> Token:
         user = await self.user_repo.get_user_by_email(email)
         if not user:
-            raise HTTPException(
+            raise AppException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password",
+                error="Unauthorized",
+                message="Invalid email",
+                field="email",
             )
 
         if not verify_password(password, user.hashed_password):
-            raise HTTPException(
+            raise AppException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password",
+                error="Unauthorized",
+                message="Invalid password",
+                field="password",
             )
         jwt_token = create_jwt_token(user_id=str(user.id))
         (refresh_token, jti, expires_at) = create_refresh_token(user_id=str(user.id))
@@ -110,8 +118,10 @@ class AuthService:
                - issue fresh access token
         """
         if not refresh_token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing refresh token"
+            raise AppException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                error="Unauthorized",
+                message="Missing refresh token",
             )
 
         decoded_token = decode_refresh_token(refresh_token)
@@ -127,16 +137,20 @@ class AuthService:
                 await self.refresh_repo.revoke_all_refresh_tokens_for_user(
                     int(decoded_token["sub"])
                 )
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
+            raise AppException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                error="Unauthorized",
+                message="Invalid refresh token",
             )
 
         if old_refresh_token.is_revoked or old_refresh_token.expires_at < utc_now():
             sub = decoded_token.get("sub") if decoded_token else None
             if sub is not None:
                 await self.refresh_repo.revoke_all_refresh_tokens_for_user(int(sub))
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expired"
+            raise AppException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                error="Unauthorized",
+                message="Refresh token expired",
             )
 
         new_refresh_token, new_jti, expires_at = create_refresh_token(

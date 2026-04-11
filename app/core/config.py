@@ -7,17 +7,16 @@ from pydantic_settings.main import SettingsConfigDict
 
 
 class SameSiteEnum(str, Enum):
-    lax = "Lax"
-    strict = "Strict"
-    none = "None"
+    lax = "lax"
+    strict = "strict"
+    none = "none"
 
     @classmethod
     def _missing_(cls, value: Any):
         """Normalize case-insensitive env values."""
         if isinstance(value, str):
-            value = value.lower()
             for member in cls:
-                if member.value == value:
+                if member.value == value.lower():
                     return member
         return None
 

@@ -6,18 +6,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
 from app.models.user_categories import user_categories
+from app.repo.base_repo import BaseRepo
 from app.schemas.user import UserCreate
 
 
-class UserRepo:
+class UserRepo(BaseRepo):
 
     def __init__(self, session: AsyncSession) -> None:
         self.session: AsyncSession = session
 
-    async def create_user(self, data: UserCreate, hashed_password: str) -> User:
+    async def create(self, data: UserCreate, **kwargs: object) -> User:
         new_user = User(
             email=data.email,
-            hashed_password=hashed_password,
+            hashed_password=kwargs["hashed_password"],
             first_name=data.first_name,
             last_name=data.last_name,
             avatar_url=data.avatar_url,
@@ -34,8 +35,8 @@ class UserRepo:
             await self.session.rollback()
             raise ValueError("Email already exists")
 
-    async def get_user_by_id(self, user_id: int) -> Optional[User]:
-        query = select(User).where(User.id == user_id)
+    async def get_by_id(self, id: int) -> Optional[User]:
+        query = select(User).where(User.id == id)
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
@@ -48,7 +49,7 @@ class UserRepo:
         return (await self.get_user_by_email(email)) is not None
 
     async def update_user(self, user_id: int, data: dict[str, Any]) -> User:
-        user = await self.get_user_by_id(user_id)
+        user = await self.get_by_id(user_id)
         if not user:
             raise ValueError("User not found")
 
@@ -60,8 +61,8 @@ class UserRepo:
         await self.session.refresh(user)
         return user
 
-    async def delete_user(self, user_id: int) -> bool:
-        user = await self.get_user_by_id(user_id)
+    async def delete(self, id: int) -> bool:
+        user = await self.get_by_id(id)
         if not user:
             return False
         await self.session.delete(user)

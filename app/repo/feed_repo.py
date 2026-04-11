@@ -10,7 +10,7 @@ from app.models.categories import Categories
 from app.models.comments import Comments
 from app.models.posts import Post
 from app.models.user_categories import user_categories
-from app.schemas.feed import CommentCreate, PostCreate, PostUpdate
+from app.schemas.feed import PostCreate, PostUpdate
 
 
 class FeedRepo:
@@ -68,17 +68,6 @@ class FeedRepo:
         result = await self.session.execute(query)
         await self.session.commit()
         return result.scalar_one_or_none()
-
-    async def create_comment(self, user_id: int, data: CommentCreate) -> Comments:
-        new_comment = Comments(user_id=user_id, **data.model_dump())
-        try:
-            self.session.add(new_comment)
-            await self.session.commit()
-            await self.session.refresh(new_comment)
-            return new_comment
-        except DatabaseError as e:
-            await self.session.rollback()
-            raise e
 
     async def get_categories(self) -> Sequence[Categories]:
         result = await self.session.execute(select(Categories))
