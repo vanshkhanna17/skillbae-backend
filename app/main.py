@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.middleware import SlowAPIMiddleware
@@ -9,6 +11,12 @@ from app.api.v1.feed import router as feed_router
 from app.api.v1.users import router as user_router
 from app.core.config import settings
 from app.core.limiter import limiter
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(levelname)s:    %(asctime)s - %(name)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title=settings.app_name,
@@ -46,9 +54,11 @@ app.include_router(feed_router, tags=["Feed"], prefix="/feed")
 
 @app.get("/")
 def root():
+    logger.debug("Logging items")
     return {"message": "Welcome to SkillBae API!"}
 
 
 @app.get("/ping")
 async def ping():
+    logger.debug("Logging ping in debug")
     return {"success": True}
