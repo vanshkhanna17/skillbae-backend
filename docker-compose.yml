@@ -1,0 +1,44 @@
+services:
+  api:
+    build: .
+    ports:
+      - 8000:8000
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_SYNC_URL: ${DATABASE_SYNC_URL}
+      SECRET_KEY: ${SECRET_KEY}
+      REFRESH_TOKEN_SECRET_KEY: ${REFRESH_TOKEN_SECRET_KEY}
+      ALGORITHM: ${ALGORITHM}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS}
+      COOKIE_SECURE: ${COOKIE_SECURE}
+      COOKIE_SAMESITE: ${COOKIE_SAMESITE}
+      COOKIE_PATH: ${COOKIE_PATH}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN}
+      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS}
+      DEBUG: ${DEBUG}
+      APP_NAME: ${APP_NAME}
+      APP_DESCRIPTION: ${APP_DESCRIPTION}
+      APP_VERSION: ${APP_VERSION}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:18.1-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: skillbae_admin
+      POSTGRES_PASSWORD: SkillBaeAdmin
+      POSTGRES_DB: skillbae
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    ports:
+      - 5432:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U skillbae_admin -d skillbae"]
+      interval: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
