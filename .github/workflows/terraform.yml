@@ -83,13 +83,13 @@ jobs:
             staging)
               echo "backend-config=config.staging.tfbackend" >> $GITHUB_OUTPUT
               echo "var-file=staging.tfvars" >> $GITHUB_OUTPUT
-              echo "aws_role=${{secrets.AWS_GITHUB_ROLE_ARN}}" >> $GITHUB_OUTPUT
+              echo "aws_role=${{vars.AWS_GITHUB_ROLE_ARN}}" >> $GITHUB_OUTPUT
               echo "workspace=staging" >> $GITHUB_OUTPUT
               ;;
             prod)
               echo "backend-config=config.prod.tfbackend" >> $GITHUB_OUTPUT
               echo "var-file=prod.tfvars" >> $GITHUB_OUTPUT
-              echo "aws_role=${{secrets.AWS_GITHUB_ROLE_ARN}}" >> $GITHUB_OUTPUT
+              echo "aws_role=${{vars.AWS_GITHUB_ROLE_ARN}}" >> $GITHUB_OUTPUT
               echo "workspace=prod" >> $GITHUB_OUTPUT
               ;;
             *)
