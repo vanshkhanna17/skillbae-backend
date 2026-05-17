@@ -1,3 +1,3 @@
-namespace = "skillbae"
+namespace   = "skillbae"
 environment = "staging"
-name = "api"
+name        = "api"

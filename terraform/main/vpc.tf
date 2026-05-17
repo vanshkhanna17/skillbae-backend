@@ -6,8 +6,8 @@ resource "aws_vpc" "main" {
 }
 
 resource "aws_subnet" "public" {
-  cidr_block = var.public_subnet_cidr
-  vpc_id = aws_vpc.main.id
+  cidr_block              = var.public_subnet_cidr
+  vpc_id                  = aws_vpc.main.id
   map_public_ip_on_launch = true
   tags = {
     Name = "${module.label.namespace}-${module.label.environment}-${module.label.name}-public-subnet"
@@ -30,6 +30,6 @@ resource "aws_route_table" "public" {
 }
 
 resource "aws_route_table_association" "public" {
-  subnet_id = aws_subnet.public.id
+  subnet_id      = aws_subnet.public.id
   route_table_id = aws_route_table.public.id
 }

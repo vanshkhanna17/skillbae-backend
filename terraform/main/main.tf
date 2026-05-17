@@ -7,8 +7,8 @@ terraform {
 
   required_providers {
     aws = {
-        source = "hashicorp/aws"
-        version = "5.26.0"
+      source  = "hashicorp/aws"
+      version = "5.26.0"
     }
   }
 
@@ -18,7 +18,7 @@ terraform {
 }
 
 module "label" {
-  source      = "git::https://github.com/cloudposse/terraform-null-label.git?ref=tags/0.21.0"
+  source = "git::https://github.com/cloudposse/terraform-null-label.git?ref=tags/0.21.0"
 
   namespace   = var.namespace
   environment = var.environment
