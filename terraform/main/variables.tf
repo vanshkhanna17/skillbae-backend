@@ -59,3 +59,8 @@ variable "tags" {
   default     = {}
   description = "Additional tags (e.g. `map('BusinessUnit','XYZ')`"
 }
+
+variable "public_key" {
+  type        = string
+  description = "SSH public key for EC2 key pair"
+}

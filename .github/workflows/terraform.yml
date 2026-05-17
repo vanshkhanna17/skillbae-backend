@@ -167,6 +167,7 @@ jobs:
         working-directory: ${{env.WORKING_DIR}}
         run: |
           terraform plan -var-file=${{steps.config.outputs.var-file}} \
+          -var="public_key=${{ secrets.TF_PUBLIC_KEY }}" \
           -out=tfplan -lock-timeout=10m
           echo "✅ Terraform plan complete"
 
