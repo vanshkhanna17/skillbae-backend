@@ -1,0 +1,3 @@
+bucket = "skillbae-api-terraform-state"
+key="skillbae-api/prod/terraform.state
+dynamodb_table="skillbae-api-terraform-locks"

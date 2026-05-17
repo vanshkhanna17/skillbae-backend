@@ -107,3 +107,8 @@ pnpm-debug.log*
 **/docker-compose.override.yml
 
 *.dev.yaml
+
+.terraform*
+**/.terraform/*
+*.tfstate
+*.tfstate.*
