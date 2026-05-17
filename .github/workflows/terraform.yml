@@ -99,6 +99,12 @@ jobs:
             esac
             echo "✅ Deployment configuration set for ${{ github.event.inputs.environment }}"
 
+      - name: Debug role ARN
+        run: |
+          echo "Role ARN length: ${#ROLE_ARN}"
+        env:
+          ROLE_ARN: ${{ steps.config.outputs.aws_role }}
+
       - name: Configure Aws Creds (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
