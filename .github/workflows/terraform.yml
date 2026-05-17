@@ -1,6 +1,6 @@
 name: Terraform Infra deployment
 
-run-name: Deploy ${{ github.event.inputs.branch }} → ${{ github.event.inputs.environment }}
+run-name: "Deploy branch: ${{ github.event.inputs.branch }} → env: ${{ github.event.inputs.environment }}"
 
 on:
   workflow_dispatch:
