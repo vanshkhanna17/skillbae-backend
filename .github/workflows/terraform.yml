@@ -71,6 +71,11 @@ jobs:
       aws_role: ${{steps.config.outputs.aws_role}}
 
     steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{github.event.inputs.branch}}
+
       - name: Set Deployment Config
         id: config
         run: |
@@ -93,11 +98,6 @@ jobs:
               ;;
             esac
             echo "✅ Deployment configuration set for ${{ github.event.inputs.environment }}"
-
-      - name: Checkout Repo
-        uses: actions/checkout@v4
-        with:
-          ref: ${{github.event.inputs.branch}}
 
       - name: Configure Aws Creds (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
