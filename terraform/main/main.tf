@@ -1,5 +1,5 @@
 provider "aws" {
-  region = variable.aws_region
+  region = var.aws_region
 }
 
 terraform {
@@ -13,7 +13,7 @@ terraform {
   }
 
   backend "s3" {
-    region = variable.aws_region
+    region = var.aws_region
     encrypt = "true"
   }
 }
