@@ -59,6 +59,7 @@ jobs:
     name: Plan for ${{github.event.inputs.environment}} deployment
     runs-on: ubuntu-latest
     needs: validate_environment
+    environment: ${{github.event.inputs.environment}}
 
     defaults:
       run:
