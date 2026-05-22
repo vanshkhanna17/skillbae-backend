@@ -181,7 +181,7 @@ jobs:
 
           echo "Building image: $IMAGE_URI"
           docker buildx build \
-          --platform linux/amd64 \
+          --platform linux/arm64 \
           -t "$IMAGE_URI" \
           --push \
           .
