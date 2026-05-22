@@ -138,6 +138,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint-and-test
     if: github.event_name == 'workflow_dispatch'
+    environment: ${{ github.event.inputs.environment }}
 
     outputs:
       image_uri: ${{ steps.build.outputs.image_uri }}
@@ -184,100 +185,30 @@ jobs:
           echo "✅ Pushed: $IMAGE_URI"
 
   # ───────────────────────────────────────────────────────────────────────────
-  # JOB 3a — Deploy to Staging EC2
-  # Runs when: branch=staging, environment=staging
+  # JOB 3 — Deploy
+  # Runs on: workflow_dispatch only
+  # Waits for: build-and-push to succeed
+  # GitHub Environment context loads the correct EC2_HOST, EC2_USER, EC2_SSH_KEY
+  # and SSM path automatically based on the selected environment
   # ───────────────────────────────────────────────────────────────────────────
-  deploy-staging:
-    name: Deploy to Staging
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment }}
     runs-on: ubuntu-latest
     needs: build-and-push
-    if: |
-      github.event_name == 'workflow_dispatch' &&
-      github.event.inputs.environment == 'staging'
-    environment: staging # maps to GitHub environment for approval rules / secrets
+    if: github.event_name == 'workflow_dispatch'
+    environment: ${{ github.event.inputs.environment }}
+
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
           IMAGE_URI: ${{ needs.build-and-push.outputs.image_uri }}
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.TF_SECRET_KEY   }}
-          envs: IMAGE_URI
-          script: |
-            set -e
-
-            cd /home/ec2-user/skillbae-backend
-
-            # ── Step 1: Authenticate with ECR ──────────────────────────────
-            # EC2 IAM instance profile handles auth — no credentials needed
-            echo "🔐 Authenticating with ECR..."
-            aws ecr get-login-password --region ap-south-1 \
-              | docker login --username AWS --password-stdin \
-              $(aws sts get-caller-identity --query Account --output text).dkr.ecr.ap-south-1.amazonaws.com
-
-            # ── Step 2: Pull the new image ──────────────────────────────────
-            echo "📥 Pulling image: $IMAGE_URI"
-            docker pull "$IMAGE_URI"
-
-            # ── Step 3: Rebuild .env from SSM ───────────────────────────────
-            # Fetches ALL parameters under /skillbae/staging/ in one API call
-            # Strips the path prefix so /skillbae/staging/SECRET_KEY → SECRET_KEY=value
-            # SecureString values are decrypted automatically via --with-decryption
-            # This means .env is always fresh — no stale values, no manual SSH needed
-            echo "📦 Fetching env vars from SSM..."
-            aws ssm get-parameters-by-path \
-              --path "/skillbae-staging-api/" \
-              --with-decryption \
-              --region ap-south-1 \
-              --query "Parameters[*].[Name,Value]" \
-              --output text \
-            | while IFS=$'\t' read -r name value; do
-                key=$(basename "$name")   # strips /skillbae/staging/ prefix
-                echo "$key=$value"
-              done > .env
-
-            # ECR_IMAGE is managed by CI, not SSM — always append after SSM fetch
-            echo "ECR_IMAGE=$IMAGE_URI" >> .env
-            echo "✅ .env written ($(wc -l < .env) variables)"
-
-            echo "🛑 Stopping current containers..."
-            docker compose down
-
-            echo "🚀 Starting updated containers..."
-            docker compose up -d --no-build
-
-            echo "⏳ Waiting for containers to be healthy..."
-            sleep 15
-
-            echo "📋 Container status:"
-            docker compose ps
-
-            echo "✅ Staging deployment complete — image: $IMAGE_URI"
-
-  # ───────────────────────────────────────────────────────────────────────────
-  # JOB 3b — Deploy to Production EC2
-  # Runs when: branch=main, environment=prod
-  # ───────────────────────────────────────────────────────────────────────────
-  deploy-prod:
-    name: Deploy to Production
-    runs-on: ubuntu-latest
-    needs: build-and-push
-    if: |
-      github.event_name == 'workflow_dispatch' &&
-      github.event.inputs.environment == 'prod'
-    environment: prod # maps to GitHub environment — add required reviewers here for safety
-    steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        env:
-          IMAGE_URI: ${{ needs.build-and-push.outputs.image_uri }}
+          ENVIRONMENT: ${{ github.event.inputs.environment }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.TF_SECRET_KEY }}
-          envs: IMAGE_URI
+          envs: IMAGE_URI,ENVIRONMENT
           script: |
             set -e
 
@@ -291,9 +222,9 @@ jobs:
             echo "📥 Pulling image: $IMAGE_URI"
             docker pull "$IMAGE_URI"
 
-            echo "📦 Fetching env vars from SSM..."
+            echo "📦 Fetching env vars from SSM (environment: $ENVIRONMENT)..."
             aws ssm get-parameters-by-path \
-              --path "/skillbae-prod-api/" \
+              --path "/skillbae-${ENVIRONMENT}-api/" \
               --with-decryption \
               --region ap-south-1 \
               --query "Parameters[*].[Name,Value]" \
@@ -306,18 +237,16 @@ jobs:
             echo "ECR_IMAGE=$IMAGE_URI" >> .env
             echo "✅ .env written ($(wc -l < .env) variables)"
 
-            # ── Step 4: Restart containers ──────────────────────────────────
             echo "🛑 Stopping current containers..."
             docker compose down
 
             echo "🚀 Starting updated containers..."
             docker compose up -d --no-build
 
-            # ── Step 5: Health check ────────────────────────────────────────
             echo "⏳ Waiting for containers to be healthy..."
             sleep 15
 
             echo "📋 Container status:"
             docker compose ps
 
-            echo "✅ Production deployment complete — image: $IMAGE_URI"
+            echo "✅ Deployment to $ENVIRONMENT complete — image: $IMAGE_URI"
