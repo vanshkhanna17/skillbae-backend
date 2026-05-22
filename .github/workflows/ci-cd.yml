@@ -215,7 +215,7 @@ jobs:
 
       - name: Push compose & nginx config to EC2 via SSM
         env:
-          INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
         run: |
           # Encode docker-compose.yml and nginx.conf so they can be passed
           # through SSM without any quoting or special character issues
