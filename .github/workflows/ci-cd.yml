@@ -171,7 +171,7 @@ jobs:
           #      skillbae-api:v20260522.43-prod
           BUILD_DATE=$(date -u '+%Y%m%d')
           IMAGE_TAG="v${BUILD_DATE}.${{ github.run_number }}-${ENVIRONMENT}"
-          IMAGE_URI="$ECR_REGISTRY/skillbae-${ENVIRONMENT}-api:$IMAGE_TAG"
+          IMAGE_URI="$ECR_REGISTRY/skillbae-${ENVIRONMENT}-api-repo:$IMAGE_TAG"
 
           echo "Building image: $IMAGE_URI"
           docker build -t "$IMAGE_URI" .
