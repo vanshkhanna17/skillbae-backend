@@ -165,6 +165,15 @@ jobs:
 
       - name: Terraform plan
         working-directory: ${{env.WORKING_DIR}}
+        # Secrets injected as TF_VAR_* — Terraform maps them to variables automatically
+        # e.g. TF_VAR_secret_key → var.secret_key in variables.tf
+        # Only needed at PLAN time — values are baked into the tfplan artifact.
+        # The deploy job runs terraform apply tfplan which needs no secrets at all.
+        env:
+          TF_VAR_postgres_password: ${{ secrets.TF_POSTGRES_PASSWORD }}
+          TF_VAR_secret_key: ${{ secrets.TF_SECRET_KEY }}
+          TF_VAR_refresh_token_secret_key: ${{ secrets.TF_REFRESH_TOKEN_SECRET_KEY }}
+          TF_VAR_cors_origins: ${{ secrets.TF_CORS_ORIGINS }}
         run: |
           terraform plan -var-file=${{steps.config.outputs.var-file}} \
           -var="public_key=${{ secrets.TF_PUBLIC_KEY }}" \
