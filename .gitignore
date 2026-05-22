@@ -105,6 +105,8 @@ pnpm-debug.log*
 # ============================================================
 /docker-data/
 **/docker-compose.override.yml
+**/docker-compose.dev*
+**/docker-compose.local*
 
 *.dev.yaml
 

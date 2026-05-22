@@ -1,13 +1,36 @@
-name: SkillBae Backend CI CD
+name: SkillBae Backend CI/CD
+
 on:
   pull_request:
-    branches: ["main", "staging"]
+    branches: ["main", "staging"] # lint-and-test only
+
+  workflow_dispatch: # manual trigger → full pipeline
+    inputs:
+      environment:
+        description: "Environment to deploy to"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Permissions for OIDC — allows GitHub Actions to get a token from AWS
+# without storing any AWS credentials as secrets
+# ─────────────────────────────────────────────────────────────────────────────
+permissions:
+  id-token: write # required for OIDC token request
+  contents: read # required to checkout the repo
 
 jobs:
+  # ───────────────────────────────────────────────────────────────────────────
+  # JOB 1 — Lint & Test
+  # Runs on: pull_request AND workflow_dispatch
+  # ───────────────────────────────────────────────────────────────────────────
   lint-and-test:
+    name: Lint & Test
     runs-on: ubuntu-latest
 
-    # ─── Test Database Service ───────────────────────────────
     services:
       postgres:
         image: postgres:18-alpine
@@ -43,14 +66,149 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v4
         with:
           python-version: "3.12"
+
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
+
       - name: Lint with ruff
         run: ruff check .
+
       - name: Run tests
         run: pytest tests/ -v
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # JOB 2 — Build & Push to ECR
+  # Runs on: workflow_dispatch only (manual deploy)
+  # Waits for: lint-and-test to pass
+  # ───────────────────────────────────────────────────────────────────────────
+  build-and-push:
+    name: Build & Push to ECR
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    if: github.event_name == 'workflow_dispatch'
+
+    outputs:
+      # Pass the full image URI to the deploy job so it knows exactly what to pull
+      image_uri: ${{ steps.build.outputs.image_uri }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_GITHUB_ROLE_ARN }}
+          aws-region: ap-south-1
+          role-session-name: GitHubActions-build-${{ github.run_id }}
+
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & Push
+        id: build
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          # Human readable tag: v<YYYYMMDD>.<run-number>-staging
+          # e.g. skillbae-staging-api:v20260522.42-staging
+          #
+          # Date     → tells you when it was built at a glance
+          # Run num  → GitHub auto-incrementing counter, always unique, always goes up
+          # -staging → environment label, useful when prod pipeline shares same ECR repo
+          # v prefix → REQUIRED by ECR lifecycle policy (keeps only tags matching "v*")
+          BUILD_DATE=$(date -u '+%Y%m%d')
+          IMAGE_TAG="v${BUILD_DATE}.${{ github.run_number }}-staging"
+          IMAGE_URI="$ECR_REGISTRY/skillbae-staging-api:$IMAGE_TAG"
+
+          echo "Building image: $IMAGE_URI"
+          docker build -t "$IMAGE_URI" .
+
+          echo "Pushing image: $IMAGE_URI"
+          docker push "$IMAGE_URI"
+
+          # Pass URI to deploy job via job output
+          echo "image_uri=$IMAGE_URI" >> $GITHUB_OUTPUT
+
+          echo "✅ Pushed: $IMAGE_URI"
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # JOB 3 — Deploy to Staging EC2
+  # Runs on: workflow_dispatch only (manual deploy)
+  # Waits for: build-and-push to succeed
+  # ───────────────────────────────────────────────────────────────────────────
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: IMAGE_URI
+          env:
+            IMAGE_URI: "${{ needs.build-and-push.outputs.image_uri }}"
+          script: |
+            set -e   # exit immediately if any command fails
+
+            cd /home/ubuntu/skillbae-backend
+
+            # ── Step 1: Authenticate with ECR ──────────────────────────────
+            # EC2 IAM instance profile handles auth — no credentials needed
+            echo "🔐 Authenticating with ECR..."
+            aws ecr get-login-password --region ap-south-1 \
+              | docker login --username AWS --password-stdin \
+              $(aws sts get-caller-identity --query Account --output text).dkr.ecr.ap-south-1.amazonaws.com
+
+            # ── Step 2: Pull the new image ──────────────────────────────────
+            echo "📥 Pulling image: $IMAGE_URI"
+            docker pull "$IMAGE_URI"
+
+            # ── Step 3: Rebuild .env from SSM ───────────────────────────────
+            # Fetches ALL parameters under /skillbae/staging/ in one API call
+            # Strips the path prefix so /skillbae/staging/SECRET_KEY → SECRET_KEY=value
+            # SecureString values are decrypted automatically via --with-decryption
+            # This means .env is always fresh — no stale values, no manual SSH needed
+            echo "📦 Fetching env vars from SSM..."
+            aws ssm get-parameters-by-path \
+              --path "/skillbae/staging/" \
+              --with-decryption \
+              --region ap-south-1 \
+              --query "Parameters[*].[Name,Value]" \
+              --output text \
+            | while IFS=$'\t' read -r name value; do
+                key=$(basename "$name")   # strips /skillbae/staging/ prefix
+                echo "$key=$value"
+              done > .env
+
+            # ECR_IMAGE is managed by CI, not SSM — always append after SSM fetch
+            echo "ECR_IMAGE=$IMAGE_URI" >> .env
+
+            echo "✅ .env written ($(wc -l < .env) variables)"
+
+            # ── Step 4: Restart containers ──────────────────────────────────
+            echo "🛑 Stopping current containers..."
+            docker compose down
+
+            echo "🚀 Starting updated containers..."
+            docker compose up -d --no-build
+
+            # ── Step 5: Health check ────────────────────────────────────────
+            echo "⏳ Waiting for containers to be healthy..."
+            sleep 15
+
+            echo "📋 Container status:"
+            docker compose ps
+
+            echo "✅ Deployment complete — image: $IMAGE_URI"
