@@ -108,12 +108,14 @@ jobs:
       APP_VERSION: ${{ secrets.APP_VERSION }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
         with:
           # On workflow_dispatch check out the selected branch; on PR use default
           ref: ${{ github.event.inputs.branch || github.ref }}
 
-      - uses: actions/setup-python@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: "3.12"
 
@@ -145,7 +147,8 @@ jobs:
       environment: ${{ steps.build.outputs.environment }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.branch }}
 
@@ -259,15 +262,24 @@ jobs:
           sed -i "s|PLACEHOLDER_IMAGE_URI|${IMAGE_URI}|g" /tmp/deploy.sh
           sed -i "s|PLACEHOLDER_ENVIRONMENT|${ENVIRONMENT}|g" /tmp/deploy.sh
 
-          # Base64-encode the script and pass as a single command to avoid
-          # all quoting/escaping issues with the SSM parameters format
+          # Base64-encode the script and pass via --cli-input-json to avoid
+          # all quoting/escaping issues — JSON format handles special chars cleanly
           ENCODED=$(base64 -w0 /tmp/deploy.sh)
 
+          # Build the JSON input file — no shell quoting issues this way
+          cat > /tmp/ssm-input.json << EOF
+          {
+            "InstanceIds": ["$INSTANCE_ID"],
+            "DocumentName": "AWS-RunShellScript",
+            "Parameters": {
+              "commands": ["echo $ENCODED | base64 -d | bash"]
+            }
+          }
+          EOF
+
           COMMAND_ID=$(aws ssm send-command \
-            --instance-ids "$INSTANCE_ID" \
-            --document-name "AWS-RunShellScript" \
             --region ap-south-1 \
-            --parameters commands=["bash -c 'echo ${ENCODED} | base64 -d | bash'"] \
+            --cli-input-json file:///tmp/ssm-input.json \
             --query "Command.CommandId" \
             --output text)
 
