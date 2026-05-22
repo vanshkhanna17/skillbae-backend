@@ -1,5 +1,7 @@
 name: SkillBae Backend CI/CD
 
+run-name: "Deploy branch: ${{ github.event.inputs.branch }} → env: ${{ github.event.inputs.environment }}"
+
 on:
   pull_request:
     branches: ["main", "staging"] # lint-and-test only
@@ -152,13 +154,13 @@ jobs:
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          IMAGE_URI: ${{ needs.build-and-push.outputs.image_uri }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: IMAGE_URI
-          env:
-            IMAGE_URI: "${{ needs.build-and-push.outputs.image_uri }}"
+          envs: IMAGE_URI # tells appleboy which env vars to forward into the SSH script
           script: |
             set -e   # exit immediately if any command fails
 

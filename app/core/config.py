@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     cookie_samesite: SameSiteEnum = Field(default=SameSiteEnum.lax)
     cookie_path: str
     backend_cors_origins: str
-    cookie_domain: str
+    cookie_domain: str | None = None
     debug: bool
 
     # FIX: Convert comma-separated string into Python list
@@ -47,6 +47,13 @@ class Settings(BaseSettings):
         if not value:
             return []
         return [origin.strip() for origin in value.split(",") if origin.strip()]
+
+    # SSM can't store empty strings, so "none" is used as a sentinel meaning "unset"
+    @field_validator("cookie_domain", mode="before")
+    def normalize_cookie_domain(cls, value: Any):
+        if not value or str(value).lower() == "none":
+            return None
+        return value
 
 
 settings = Settings()  # pyright: ignore[reportCallIssue]
