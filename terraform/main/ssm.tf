@@ -85,7 +85,7 @@ resource "aws_ssm_parameter" "cookie_path" {
 resource "aws_ssm_parameter" "cookie_domain" {
   name  = "${local.ssm_prefix}/COOKIE_DOMAIN"
   type  = "String"
-  value = "" # blank — browser defaults to current host, safest for raw IP
+  value = "none" # SSM requires non-empty; app treats "none" as unset → browser defaults to current host
 }
 
 resource "aws_ssm_parameter" "cors_origins" {
