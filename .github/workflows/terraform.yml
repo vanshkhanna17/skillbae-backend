@@ -167,6 +167,7 @@ jobs:
         working-directory: ${{env.WORKING_DIR}}
         run: |
           terraform plan -var-file=${{steps.config.outputs.var-file}} \
+          -var="public_key=${{ secrets.TF_PUBLIC_KEY }}" \
           -out=tfplan -lock-timeout=10m
           echo "✅ Terraform plan complete"
 
@@ -258,9 +259,11 @@ jobs:
         run: |
           EC2_PUBLIC_IP=$(terraform output -raw ec2_public_ip)
           EC2_PUBLIC_DNS=$(terraform output -raw ec2_public_dns)
+          ECR_REPO=$(terraform output -raw ecr_repository_url)
 
           echo "ec2_public_ip=$EC2_PUBLIC_IP" >> $GITHUB_OUTPUT
           echo "ec2_public_dns=$EC2_PUBLIC_DNS" >> $GITHUB_OUTPUT
+          echo "ecr_repo=$ECR_REPO" >> $GITHUB_OUTPUT
 
           echo "✅ EC2 Public IP: $EC2_PUBLIC_IP"
           echo "✅ EC2 Public DNS: $EC2_PUBLIC_DNS"
