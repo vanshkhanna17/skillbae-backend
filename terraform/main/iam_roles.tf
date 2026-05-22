@@ -17,6 +17,13 @@ resource "aws_iam_role_policy_attachment" "ecr" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
+# Required for SSM Session Manager and ssm send-command — allows GitHub Actions
+# to run deploy commands on EC2 without opening port 22
+resource "aws_iam_role_policy_attachment" "ssm_core" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 resource "aws_iam_role_policy" "ssm-policy" {
   role = aws_iam_role.ec2_role.name
   name = "${var.namespace}-${var.environment}-${var.name}-ssm-policy"
