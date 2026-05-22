@@ -64,3 +64,26 @@ variable "public_key" {
   type        = string
   description = "SSH public key for EC2 key pair"
 }
+
+variable "postgres_password" {
+  type        = string
+  sensitive   = true # marks as sensitive — Terraform won't print it in plan/apply output
+  description = "Postgres database password. Generate with: openssl rand -hex 32"
+}
+
+variable "secret_key" {
+  type        = string
+  sensitive   = true
+  description = "JWT signing secret. Generate with: openssl rand -hex 64"
+}
+
+variable "refresh_token_secret_key" {
+  type        = string
+  sensitive   = true
+  description = "JWT refresh token secret. Generate with: openssl rand -hex 64 (must differ from secret_key)"
+}
+
+variable "cors_origins" {
+  type        = string
+  description = "Comma-separated CORS origins. e.g. http://<EC2-IP> for staging"
+}

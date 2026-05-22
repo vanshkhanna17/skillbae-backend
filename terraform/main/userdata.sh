@@ -2,16 +2,30 @@
 
 set -e
 
-apt update -y
+dnf update -y
 
-apt install -y docker.io git awscli
+dnf install -y \
+  docker \
+  git \
+  awscli
 
 systemctl enable docker
+
 systemctl start docker
 
-curl -SL https://github.com/docker/compose/releases/download/v2.24.6/docker-compose-linux-x86_64 \
--o /usr/local/bin/docker-compose
+usermod -aG docker ec2-user
 
-chmod +x /usr/local/bin/docker-compose
+mkdir -p /usr/local/lib/docker/cli-plugins
 
-usermod -aG docker ubuntu
+curl -SL \
+https://github.com/docker/compose/releases/download/v2.24.6/docker-compose-linux-x86_64 \
+-o /usr/local/lib/docker/cli-plugins/docker-compose
+
+chmod +x \
+/usr/local/lib/docker/cli-plugins/docker-compose
+
+docker --version
+
+docker compose version
+
+aws --version
