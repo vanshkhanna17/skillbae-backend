@@ -186,9 +186,6 @@ jobs:
           --push \
           .
 
-          echo "Pushing image: $IMAGE_URI"
-          docker push "$IMAGE_URI"
-
           echo "image_uri=$IMAGE_URI" >> $GITHUB_OUTPUT
           echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
 
