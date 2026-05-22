@@ -163,6 +163,9 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build & Push
         id: build
         env:
@@ -177,7 +180,11 @@ jobs:
           IMAGE_URI="$ECR_REGISTRY/skillbae-${ENVIRONMENT}-api-repo:$IMAGE_TAG"
 
           echo "Building image: $IMAGE_URI"
-          docker build -t "$IMAGE_URI" .
+          docker buildx build \
+          --platform linux/amd64 \
+          -t "$IMAGE_URI" \
+          --push \
+          .
 
           echo "Pushing image: $IMAGE_URI"
           docker push "$IMAGE_URI"
