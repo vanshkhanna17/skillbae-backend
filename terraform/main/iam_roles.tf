@@ -37,7 +37,9 @@ resource "aws_iam_role_policy" "ssm-policy" {
           "ssm:GetParameter",
           "ssm:GetParametersByPath"
         ]
-        Resource = "arn:aws:ssm:${var.aws_region}:*:parameter/skillbae/${var.environment}/*"
+        # Path matches the SSM prefix: /${var.namespace}-${var.environment}-${var.name}/
+        # e.g. /skillbae-staging-api/* or /skillbae-prod-api/*
+        Resource = "arn:aws:ssm:${var.aws_region}:*:parameter/${var.namespace}-${var.environment}-${var.name}/*"
       },
       {
         Sid    = "KMSDecrypt"
