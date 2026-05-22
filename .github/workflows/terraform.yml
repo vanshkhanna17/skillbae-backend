@@ -294,7 +294,7 @@ jobs:
           echo "| Resource | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| EC2 Public IP | \`${{ steps.outputs.outputs.ec2_public_ip }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| EC2 Public DNS | \`${{ steps.outputs.outputs.ec2_public_dns }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| EC2 Instance ID | \`${{ steps.outputs.outputs.ec2_instance_id }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| ECR Repo URL | \`${{ steps.outputs.outputs.ecr_repo_url }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ **Deployment completed successfully at $(date -u '+%Y-%m-%d %H:%M:%S UTC')**" >> $GITHUB_STEP_SUMMARY
