@@ -18,6 +18,11 @@ systemctl start docker
 systemctl enable amazon-ssm-agent
 systemctl start amazon-ssm-agent
 
+# Create the app directory — deploy script writes .env here and runs docker compose
+# The actual app code lives in the ECR image, no repo clone needed
+mkdir -p /home/ec2-user/skillbae-backend
+chown ec2-user:ec2-user /home/ec2-user/skillbae-backend
+
 usermod -aG docker ec2-user
 
 mkdir -p /usr/local/lib/docker/cli-plugins
