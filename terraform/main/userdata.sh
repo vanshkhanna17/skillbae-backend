@@ -7,11 +7,16 @@ dnf update -y
 dnf install -y \
   docker \
   git \
-  awscli
+  awscli \
+  amazon-ssm-agent
 
 systemctl enable docker
-
 systemctl start docker
+
+# SSM agent — required for GitHub Actions to deploy via ssm send-command
+# without opening port 22 to the internet
+systemctl enable amazon-ssm-agent
+systemctl start amazon-ssm-agent
 
 usermod -aG docker ec2-user
 
