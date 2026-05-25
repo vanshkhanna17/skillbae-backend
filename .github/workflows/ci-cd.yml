@@ -150,10 +150,10 @@ jobs:
   # JOB 2 — Terraform Plan
   # Runs on: workflow_dispatch only, when deploy_infra checkbox is checked
   # ───────────────────────────────────────────────────────────────────────────
-  tf-plan:
+  terraform-plan:
     name: "Terraform Plan (${{ github.event.inputs.environment }})"
     runs-on: ubuntu-latest
-    needs: [validate-inputs]
+    needs: [lint-and-test]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_infra == 'true' # ✅ string compare — inputs context is always string at runtime
     environment: ${{ github.event.inputs.environment }}
 
@@ -280,7 +280,7 @@ jobs:
   # Runs on: workflow_dispatch only, when deploy_infra checkbox is checked
   # Waits for: tf-plan (and implicitly lint-and-test via job ordering)
   # ───────────────────────────────────────────────────────────────────────────
-  tf-apply:
+  terraform-apply:
     name: "Terraform Apply (${{ github.event.inputs.environment }})"
     runs-on: ubuntu-latest
     needs: [lint-and-test, tf-plan]
