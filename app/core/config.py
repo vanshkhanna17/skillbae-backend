@@ -37,24 +37,24 @@ class Settings(BaseSettings):
     cookie_secure: bool
     cookie_samesite: SameSiteEnum = Field(default=SameSiteEnum.lax)
     cookie_path: str
-    backend_cors_origins: list[str] = Field(default_factory=list)
+    backend_cors_origins: list[str] = Field(
+        default_factory=list
+    )  # ✅ list, defaults to []
     cookie_domain: str | None = None
     debug: bool
 
-    # FIX: Convert comma-separated string into Python list
-    @field_validator(
-        "backend_cors_origins", mode="before"
-    )  # 👈 mode="before" not "after"
-    def convert_cors_to_list(cls, value: Any):
+    @field_validator("backend_cors_origins", mode="before")  # ✅ mode="before"
+    @classmethod
+    def convert_cors_to_list(cls, value: Any) -> list[str]:
         if not value:
             return []
         if isinstance(value, list):
-            return value  # already a list, pass through
+            return value  # already a list
         return [origin.strip() for origin in str(value).split(",") if origin.strip()]
 
-    # SSM can't store empty strings, so "none" is used as a sentinel meaning "unset"
     @field_validator("cookie_domain", mode="before")
-    def normalize_cookie_domain(cls, value: Any):
+    @classmethod
+    def normalize_cookie_domain(cls, value: Any) -> str | None:
         if not value or str(value).lower() == "none":
             return None
         return value
