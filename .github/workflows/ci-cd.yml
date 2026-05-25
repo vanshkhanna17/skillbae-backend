@@ -1,5 +1,5 @@
 name: SkillBae Backend CI/CD
-run-name: ${{ github.event_name == 'workflow_dispatch' && format('Deploy {0} → {1}', github.event.inputs.branch, github.event.inputs.environment) || github.event.head_commit.message }}
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('Deploy {0} → {1}{2}', github.event.inputs.branch, github.event.inputs.environment, github.event.inputs.deploy_infra == true && ' (+ infra)' || '') || github.event.head_commit.message }}
 
 on:
   pull_request:
@@ -23,6 +23,11 @@ on:
         options:
           - staging
           - prod
+      deploy_infra:
+        description: "Run Terraform (provision/update infrastructure)?"
+        required: true
+        default: false # ✅ boolean, no quotes
+        type: boolean # ✅ renders as checkbox in GitHub UI
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Permissions for OIDC — allows GitHub Actions to get a token from AWS
@@ -32,6 +37,15 @@ permissions:
   id-token: write # required for OIDC token request
   contents: read # required to checkout the repo
   packages: write # required for GitHub Actions cache (buildx gha backend)
+
+env:
+  AWS_REGION: "ap-south-1"
+  TF_WORKING_DIR: "terraform/main"
+  TERRAFORM_VERSION: "1.6.2"
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || github.ref }}
+  cancel-in-progress: false
 
 jobs:
   # ───────────────────────────────────────────────────────────────────────────
@@ -49,8 +63,9 @@ jobs:
           BRANCH="${{ github.event.inputs.branch }}"
           ENV="${{ github.event.inputs.environment }}"
 
-          echo "Branch: $BRANCH"
-          echo "Environment: $ENV"
+          echo "Branch:        $BRANCH"
+          echo "Environment:   $ENV"
+          echo "Deploy infra:  ${{ github.event.inputs.deploy_infra }}"
 
           if [[ "$BRANCH" == "staging" && "$ENV" != "staging" ]]; then
             echo "❌ Invalid pairing: branch 'staging' can only deploy to environment 'staging', got '$ENV'"
@@ -132,17 +147,243 @@ jobs:
         run: pytest tests/ -v
 
   # ───────────────────────────────────────────────────────────────────────────
-  # JOB 2 — Build & Push to ECR
-  # Runs on: workflow_dispatch only (manual deploy)
-  # Waits for: lint-and-test to pass
+  # JOB 2 — Terraform Plan
+  # Runs on: workflow_dispatch only, when deploy_infra checkbox is checked
+  # ───────────────────────────────────────────────────────────────────────────
+  tf-plan:
+    name: "Terraform Plan (${{ github.event.inputs.environment }})"
+    runs-on: ubuntu-latest
+    needs: [validate-inputs]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_infra == true # ✅ boolean compare
+    environment: ${{ github.event.inputs.environment }}
+
+    defaults:
+      run:
+        working-directory: "terraform/main"
+
+    outputs:
+      backend-config: ${{ steps.config.outputs.backend-config }}
+      var-file: ${{ steps.config.outputs.var-file }}
+      workspace: ${{ steps.config.outputs.workspace }}
+      aws_role: ${{ steps.config.outputs.aws_role }}
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Set Deployment Config
+        id: config
+        run: |
+          case "${{ github.event.inputs.environment }}" in
+            staging)
+              echo "backend-config=config.staging.tfbackend" >> $GITHUB_OUTPUT
+              echo "var-file=staging.tfvars" >> $GITHUB_OUTPUT
+              echo "aws_role=${{ vars.AWS_GITHUB_ROLE_ARN }}" >> $GITHUB_OUTPUT
+              echo "workspace=staging" >> $GITHUB_OUTPUT
+              ;;
+            prod)
+              echo "backend-config=config.prod.tfbackend" >> $GITHUB_OUTPUT
+              echo "var-file=prod.tfvars" >> $GITHUB_OUTPUT
+              echo "aws_role=${{ vars.AWS_GITHUB_ROLE_ARN }}" >> $GITHUB_OUTPUT
+              echo "workspace=prod" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "❌ Error: Invalid environment '${{ github.event.inputs.environment }}'"
+              exit 1
+              ;;
+          esac
+          echo "✅ Deployment configuration set for ${{ github.event.inputs.environment }}"
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ steps.config.outputs.aws_role }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-tf-plan-${{ github.run_id }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config=${{ steps.config.outputs.backend-config }} \
+            -reconfigure
+          echo "✅ Terraform initialized"
+
+      - name: Terraform Workspace
+        run: |
+          WORKSPACE=${{ steps.config.outputs.workspace }}
+          if terraform workspace list | grep -q "^\s*\*\?\s*${WORKSPACE}$"; then
+            echo "📂 Selecting existing workspace: $WORKSPACE"
+            terraform workspace select "$WORKSPACE"
+          else
+            echo "📂 Creating new workspace: $WORKSPACE"
+            terraform workspace new "$WORKSPACE"
+          fi
+          CURRENT=$(terraform workspace show)
+          echo "✅ Active workspace: $CURRENT"
+          if [ "$CURRENT" != "$WORKSPACE" ]; then
+            echo "❌ Failed to switch to workspace $WORKSPACE"
+            exit 1
+          fi
+
+      - name: Terraform Format Check
+        run: terraform fmt -check
+
+      - name: Terraform Validate
+        run: |
+          terraform validate
+          echo "✅ Terraform configuration valid"
+
+      - name: Terraform Plan
+        env:
+          TF_VAR_postgres_password: ${{ secrets.TF_POSTGRES_PASSWORD }}
+          TF_VAR_secret_key: ${{ secrets.TF_SECRET_KEY }}
+          TF_VAR_refresh_token_secret_key: ${{ secrets.TF_REFRESH_TOKEN_SECRET_KEY }}
+          TF_VAR_cors_origins: ${{ secrets.TF_CORS_ORIGINS }}
+        run: |
+          terraform plan \
+            -var-file=${{ steps.config.outputs.var-file }} \
+            -var="public_key=${{ secrets.TF_PUBLIC_KEY }}" \
+            -out=tfplan \
+            -lock-timeout=10m
+          echo "✅ Terraform plan complete"
+
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ github.event.inputs.environment }}-${{ github.run_id }}
+          path: ${{ env.TF_WORKING_DIR }}/tfplan
+          retention-days: 1
+
+      - name: Plan Summary
+        run: |
+          echo "## 📋 Terraform Plan Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Key | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | \`${{ github.event.inputs.environment }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Workspace   | \`${{ steps.config.outputs.workspace }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch      | \`${{ github.event.inputs.branch }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Run ID      | \`${{ github.run_id }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⏭️ **Next:** Approve the environment to proceed with \`terraform apply\`" >> $GITHUB_STEP_SUMMARY
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # JOB 3 — Terraform Apply
+  # Runs on: workflow_dispatch only, when deploy_infra checkbox is checked
+  # Waits for: tf-plan (and implicitly lint-and-test via job ordering)
+  # ───────────────────────────────────────────────────────────────────────────
+  tf-apply:
+    name: "Terraform Apply (${{ github.event.inputs.environment }})"
+    runs-on: ubuntu-latest
+    needs: [lint-and-test, tf-plan]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_infra == true # ✅ boolean compare
+    environment: ${{ github.event.inputs.environment }}
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        working-directory: "terraform/main"
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ needs.tf-plan.outputs.aws_role }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-tf-apply-${{ github.run_id }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config=${{ needs.tf-plan.outputs.backend-config }} \
+            -reconfigure
+          echo "✅ Terraform initialized"
+
+      - name: Select Terraform Workspace
+        run: |
+          WORKSPACE="${{ needs.tf-plan.outputs.workspace }}"
+          echo "📂 Selecting workspace: $WORKSPACE"
+          terraform workspace select "$WORKSPACE"
+          CURRENT=$(terraform workspace show)
+          echo "✅ Active workspace: $CURRENT"
+          if [ "$CURRENT" != "$WORKSPACE" ]; then
+            echo "❌ Failed to switch to workspace $WORKSPACE"
+            exit 1
+          fi
+
+      - name: Download Plan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ github.event.inputs.environment }}-${{ github.run_id }}
+          path: ${{ env.TF_WORKING_DIR }}
+
+      - name: Terraform Apply
+        run: |
+          terraform apply -auto-approve -lock-timeout=10m tfplan
+          echo "✅ Infrastructure deployed"
+
+      - name: Capture Terraform Outputs
+        id: tf-outputs
+        run: |
+          EC2_PUBLIC_IP=$(terraform output -raw ec2_public_ip)
+          EC2_INSTANCE_ID=$(terraform output -raw ec2_instance_id)
+          ECR_REPO_URL=$(terraform output -raw ecr_repository_url)
+          CLOUDFRONT_URL=$(terraform output -raw api_cloudfront_url)
+
+          echo "ec2_public_ip=$EC2_PUBLIC_IP"       >> $GITHUB_OUTPUT
+          echo "ec2_instance_id=$EC2_INSTANCE_ID"   >> $GITHUB_OUTPUT
+          echo "ecr_repo_url=$ECR_REPO_URL"         >> $GITHUB_OUTPUT
+          echo "cloudfront_url=$CLOUDFRONT_URL"     >> $GITHUB_OUTPUT
+
+          echo "✅ EC2 Public IP:    $EC2_PUBLIC_IP"
+          echo "✅ EC2 Instance ID:  $EC2_INSTANCE_ID"
+          echo "✅ ECR Repo URL:     $ECR_REPO_URL"
+          echo "✅ CloudFront URL:   $CLOUDFRONT_URL"
+
+      - name: Infra Summary
+        run: |
+          echo "## 🏗️ Terraform Apply Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Resource        | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| EC2 Public IP   | \`${{ steps.tf-outputs.outputs.ec2_public_ip }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| EC2 Instance ID | \`${{ steps.tf-outputs.outputs.ec2_instance_id }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| ECR Repo URL    | \`${{ steps.tf-outputs.outputs.ecr_repo_url }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| CloudFront URL  | \`${{ steps.tf-outputs.outputs.cloudfront_url }}\` |" >> $GITHUB_STEP_SUMMARY
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # JOB 4 — Build & Push to ECR
+  # Runs on: workflow_dispatch only
+  # Waits for: tf-apply (if deploy_infra=true) OR lint-and-test (if skipped)
   # ───────────────────────────────────────────────────────────────────────────
   build-and-push:
     name: Build & Push to ECR
     runs-on: ubuntu-latest
-    needs: lint-and-test
-    if: github.event_name == 'workflow_dispatch'
+    needs: [lint-and-test, tf-apply]
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      needs.lint-and-test.result == 'success' &&
+      (needs.tf-apply.result == 'success' || needs.tf-apply.result == 'skipped')
     environment: ${{ github.event.inputs.environment }}
-
     outputs:
       image_uri: ${{ steps.build.outputs.image_uri }}
       environment: ${{ steps.build.outputs.environment }}
@@ -157,7 +398,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_GITHUB_ROLE_ARN }}
-          aws-region: ap-south-1
+          aws-region: ${{ env.AWS_REGION }}
           role-session-name: GitHubActions-build-${{ github.run_id }}
 
       - name: Login to ECR
@@ -182,23 +423,22 @@ jobs:
 
           echo "Building image: $IMAGE_URI"
           docker buildx build \
-          --platform linux/arm64 \
-          --load \
-          --cache-from type=gha \
-          --cache-to   type=gha,mode=max \
-          -t "$IMAGE_URI" \
-          .
+            --platform linux/arm64 \
+            --load \
+            --cache-from type=gha \
+            --cache-to   type=gha,mode=max \
+            -t "$IMAGE_URI" \
+            .
 
           echo "Pushing image: $IMAGE_URI"
           docker push "$IMAGE_URI"
 
-          echo "image_uri=$IMAGE_URI" >> $GITHUB_OUTPUT
-          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
-
+          echo "image_uri=$IMAGE_URI"       >> $GITHUB_OUTPUT
+          echo "environment=$ENVIRONMENT"   >> $GITHUB_OUTPUT
           echo "✅ Pushed: $IMAGE_URI"
 
   # ───────────────────────────────────────────────────────────────────────────
-  # JOB 3 — Deploy
+  # JOB 5 — Deploy to EC2 via SSM
   # Runs on: workflow_dispatch only
   # Waits for: build-and-push to succeed
   # Uses AWS SSM send-command — no port 22 needed, IAM controls access
@@ -220,7 +460,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_GITHUB_ROLE_ARN }}
-          aws-region: ap-south-1
+          aws-region: ${{ env.AWS_REGION }}
           role-session-name: GitHubActions-deploy-${{ github.run_id }}
 
       - name: Push compose & nginx config to EC2 via SSM
@@ -258,7 +498,7 @@ jobs:
           ENDJSON
 
           CMD_ID=$(aws ssm send-command \
-            --region ap-south-1 \
+            --region ${{ env.AWS_REGION }} \
             --cli-input-json file:///tmp/ssm-copy.json \
             --query "Command.CommandId" \
             --output text)
@@ -269,7 +509,7 @@ jobs:
             STATUS=$(aws ssm get-command-invocation \
               --command-id "$CMD_ID" \
               --instance-id "$INSTANCE_ID" \
-              --region ap-south-1 \
+              --region ${{ env.AWS_REGION }} \
               --query "Status" \
               --output text 2>/dev/null || echo "Pending")
 
@@ -283,7 +523,7 @@ jobs:
               aws ssm get-command-invocation \
                 --command-id "$CMD_ID" \
                 --instance-id "$INSTANCE_ID" \
-                --region ap-south-1 \
+                --region ${{ env.AWS_REGION }} \
                 --query "StandardErrorContent" \
                 --output text
               exit 1
@@ -301,6 +541,7 @@ jobs:
 
           # Write the deploy script to a file — avoids all shell escaping issues
           # with --parameters inline. Values are substituted via sed before encoding.
+
           cat > /tmp/deploy.sh << 'EOF'
           #!/bin/bash
           set -e
@@ -322,7 +563,7 @@ jobs:
           echo "Pulling image: $IMAGE_URI"
           docker pull "$IMAGE_URI"
 
-          echo "Fetching env vars from SSM..."
+          echo "Fetching env vars from SSM Parameter Store..."
           aws ssm get-parameters-by-path \
             --path "/skillbae-${ENVIRONMENT}-api/" \
             --with-decryption \
@@ -342,7 +583,7 @@ jobs:
 
           sleep 15
           docker compose ps
-          echo "Deployment to $ENVIRONMENT complete"
+          echo "✅ Deployment to $ENVIRONMENT complete"
           EOF
 
           # Substitute actual values
@@ -365,7 +606,7 @@ jobs:
           EOF
 
           COMMAND_ID=$(aws ssm send-command \
-            --region ap-south-1 \
+            --region ${{ env.AWS_REGION }} \
             --cli-input-json file:///tmp/ssm-input.json \
             --query "Command.CommandId" \
             --output text)
@@ -378,7 +619,7 @@ jobs:
             STATUS=$(aws ssm get-command-invocation \
               --command-id "$COMMAND_ID" \
               --instance-id "$INSTANCE_ID" \
-              --region ap-south-1 \
+              --region ${{ env.AWS_REGION }} \
               --query "Status" \
               --output text 2>/dev/null || echo "Pending")
 
@@ -390,7 +631,7 @@ jobs:
               aws ssm get-command-invocation \
                 --command-id "$COMMAND_ID" \
                 --instance-id "$INSTANCE_ID" \
-                --region ap-south-1 \
+                --region ${{ env.AWS_REGION }} \
                 --query "StandardOutputContent" \
                 --output text
               exit 0
@@ -399,7 +640,7 @@ jobs:
               aws ssm get-command-invocation \
                 --command-id "$COMMAND_ID" \
                 --instance-id "$INSTANCE_ID" \
-                --region ap-south-1 \
+                --region ${{ env.AWS_REGION }} \
                 --query "StandardErrorContent" \
                 --output text
               exit 1
@@ -410,3 +651,17 @@ jobs:
 
           echo "❌ Timed out waiting for command to complete"
           exit 1
+
+      - name: Deployment Summary
+        run: |
+          echo "## 🚀 Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Key             | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment     | \`${{ github.event.inputs.environment }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch          | \`${{ github.event.inputs.branch }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Image           | \`${{ needs.build-and-push.outputs.image_uri }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Infra Updated   | \`${{ github.event.inputs.deploy_infra }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Run ID          | \`${{ github.run_id }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Deployed at $(date -u '+%Y-%m-%d %H:%M:%S UTC')**" >> $GITHUB_STEP_SUMMARY
