@@ -16,7 +16,7 @@ on:
           - staging
           - main
       environment:
-        description: "Environment to deploy to (staging branch → staging, main branch → prod)"
+        description: "Environment to deploy"
         required: true
         default: "staging"
         type: choice

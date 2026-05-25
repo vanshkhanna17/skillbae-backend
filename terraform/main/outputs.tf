@@ -9,3 +9,8 @@ output "ec2_instance_id" {
 output "ecr_repository_url" {
   value = aws_ecr_repository.app_repo.repository_url
 }
+
+output "api_cloudfront_url" {
+  value       = "https://${aws_cloudfront_distribution.api_cdn.domain_name}"
+  description = "Use this as VITE_API_BASE_URL in frontend"
+}
