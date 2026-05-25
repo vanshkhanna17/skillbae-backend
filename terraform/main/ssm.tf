@@ -91,7 +91,7 @@ resource "aws_ssm_parameter" "cookie_domain" {
 resource "aws_ssm_parameter" "cors_origins" {
   name  = "${local.ssm_prefix}/BACKEND_CORS_ORIGINS"
   type  = "String"
-  value = aws_cloudfront_distribution.api_cdn.domain_name # passed via staging.tfvars — e.g. "http://<EC2-IP>"
+  value = "https://${aws_cloudfront_distribution.app_cdn.domain_name}" # passed via staging.tfvars — e.g. "http://<EC2-IP>"
 }
 
 # ─── Database Config (String — not secret, host/db name are not sensitive) ───
