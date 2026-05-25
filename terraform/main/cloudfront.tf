@@ -1,7 +1,7 @@
 resource "aws_cloudfront_distribution" "api_cdn" {
   enabled = true
   origin {
-    domain_name = aws_instance.app_server.public_ip
+    domain_name = "http://${aws_instance.app_server.public_ip}.nip.io"
     origin_id   = "origin-instance-${module.label.namespace}-${module.label.environment}-${module.label.name}"
     custom_origin_config {
       http_port              = 80
