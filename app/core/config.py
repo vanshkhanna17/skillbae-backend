@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
 from pydantic_settings.main import SettingsConfigDict
 
@@ -37,20 +37,21 @@ class Settings(BaseSettings):
     cookie_secure: bool
     cookie_samesite: SameSiteEnum = Field(default=SameSiteEnum.lax)
     cookie_path: str
-    backend_cors_origins: list[str] = Field(
-        default_factory=list
-    )  # ✅ list, defaults to []
+    backend_cors_origins: str = Field(
+        default=""
+    )  # 👈 str, not list — avoids JSON decode
     cookie_domain: str | None = None
     debug: bool
 
-    @field_validator("backend_cors_origins", mode="before")  # ✅ mode="before"
-    @classmethod
-    def convert_cors_to_list(cls, value: Any) -> list[str]:
-        if not value:
-            return []
-        if isinstance(value, list):
-            return value  # already a list
-        return [origin.strip() for origin in str(value).split(",") if origin.strip()]
+    @model_validator(mode="after")
+    def parse_list_fields(self) -> "Settings":
+        value = self.backend_cors_origins
+        if not value or value.strip() == "":
+            object.__setattr__(self, "backend_cors_origins", [])
+        else:
+            origins = [o.strip() for o in value.split(",") if o.strip()]
+            object.__setattr__(self, "backend_cors_origins", origins)
+        return self
 
     @field_validator("cookie_domain", mode="before")
     @classmethod
