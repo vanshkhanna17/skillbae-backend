@@ -201,7 +201,7 @@ jobs:
         with:
           role-to-assume: ${{ steps.config.outputs.aws_role }}
           aws-region: ${{ env.AWS_REGION }}
-          role-session-name: GitHubActions-tf-plan-${{ github.run_id }}
+          role-session-name: GitHubActions-terraform-plan-${{ github.run_id }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -278,12 +278,12 @@ jobs:
   # ───────────────────────────────────────────────────────────────────────────
   # JOB 3 — Terraform Apply
   # Runs on: workflow_dispatch only, when deploy_infra checkbox is checked
-  # Waits for: tf-plan (and implicitly lint-and-test via job ordering)
+  # Waits for: terraform-plan (and implicitly lint-and-test via job ordering)
   # ───────────────────────────────────────────────────────────────────────────
   terraform-apply:
     name: "Terraform Apply (${{ github.event.inputs.environment }})"
     runs-on: ubuntu-latest
-    needs: [lint-and-test, tf-plan]
+    needs: [terraform-plan]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_infra == 'true' # ✅ string compare — inputs context is always string at runtime
     environment: ${{ github.event.inputs.environment }}
     timeout-minutes: 30
@@ -301,9 +301,9 @@ jobs:
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ needs.tf-plan.outputs.aws_role }}
+          role-to-assume: ${{ needs.terraform-plan.outputs.aws_role }}
           aws-region: ${{ env.AWS_REGION }}
-          role-session-name: GitHubActions-tf-apply-${{ github.run_id }}
+          role-session-name: GitHubActions-terraform-apply-${{ github.run_id }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -314,13 +314,13 @@ jobs:
       - name: Terraform Init
         run: |
           terraform init \
-            -backend-config=${{ needs.tf-plan.outputs.backend-config }} \
+            -backend-config=${{ needs.terraform-plan.outputs.backend-config }} \
             -reconfigure
           echo "✅ Terraform initialized"
 
       - name: Select Terraform Workspace
         run: |
-          WORKSPACE="${{ needs.tf-plan.outputs.workspace }}"
+          WORKSPACE="${{ needs.terraform-plan.outputs.workspace }}"
           echo "📂 Selecting workspace: $WORKSPACE"
           terraform workspace select "$WORKSPACE"
           CURRENT=$(terraform workspace show)
@@ -373,16 +373,16 @@ jobs:
   # ───────────────────────────────────────────────────────────────────────────
   # JOB 4 — Build & Push to ECR
   # Runs on: workflow_dispatch only
-  # Waits for: tf-apply (if deploy_infra=true) OR lint-and-test (if skipped)
+  # Waits for: terraform-apply (if deploy_infra=true) OR lint-and-test (if skipped)
   # ───────────────────────────────────────────────────────────────────────────
   build-and-push:
     name: Build & Push to ECR
     runs-on: ubuntu-latest
-    needs: [lint-and-test, tf-apply]
+    needs: [lint-and-test, terraform-plan]
     if: |
       github.event_name == 'workflow_dispatch' &&
       needs.lint-and-test.result == 'success' &&
-      (needs.tf-apply.result == 'success' || needs.tf-apply.result == 'skipped')
+      (needs.terraform-apply.result == 'success' || needs.terraform-apply.result == 'skipped')
     environment: ${{ github.event.inputs.environment }}
     outputs:
       image_uri: ${{ steps.build.outputs.image_uri }}
