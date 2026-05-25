@@ -36,4 +36,9 @@ resource "aws_cloudfront_distribution" "api_cdn" {
   viewer_certificate {
     cloudfront_default_certificate = true
   }
+
+  tags = {
+    Environment = module.label.environment
+    Name        = "${module.label.namespace}-${module.label.environment}-${module.label.name}-cdn"
+  }
 }
