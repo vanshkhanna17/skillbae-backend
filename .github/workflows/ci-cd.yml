@@ -117,7 +117,6 @@ jobs:
       COOKIE_SAMESITE: ${{ secrets.COOKIE_SAMESITE }}
       COOKIE_PATH: ${{ secrets.COOKIE_PATH }}
       COOKIE_DOMAIN: ${{ secrets.COOKIE_DOMAIN }}
-      BACKEND_CORS_ORIGINS: ${{ secrets.BACKEND_CORS_ORIGINS }}
       DEBUG: ${{ secrets.DEBUG }}
       APP_NAME: ${{ secrets.APP_NAME }}
       APP_DESCRIPTION: ${{ secrets.APP_DESCRIPTION }}
