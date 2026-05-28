@@ -95,7 +95,7 @@ resource "aws_ssm_parameter" "cookie_domain" {
 resource "aws_ssm_parameter" "cors_origins" {
   name  = "${local.ssm_prefix}/BACKEND_CORS_ORIGINS"
   type  = "String"
-  value = "https://${data.aws_ssm_parameter.frontend_cdn_domain.value}"
+  value = "https://${data.aws_ssm_parameter.frontend_cdn_domain.value},http://localhost:5173,http://127.0.0.1:5173"
 }
 
 # ─── Database Config (String — not secret, host/db name are not sensitive) ───
