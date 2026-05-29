@@ -53,5 +53,14 @@ services:
       retries: 5
     restart: unless-stopped
 
+  redis:
+    image: redis:8.4-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 30s
+      retries: 50
+
 volumes:
   postgres_data:
