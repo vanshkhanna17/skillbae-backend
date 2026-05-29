@@ -121,6 +121,7 @@ jobs:
       APP_NAME: ${{ secrets.APP_NAME }}
       APP_DESCRIPTION: ${{ secrets.APP_DESCRIPTION }}
       APP_VERSION: ${{ secrets.APP_VERSION }}
+      REDIS_URL: ${{ secrets.REDIS_URL }}
 
     steps:
       - name: Checkout Code
