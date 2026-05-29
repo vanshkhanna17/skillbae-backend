@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
 from pydantic_settings.main import SettingsConfigDict
 
@@ -37,20 +37,25 @@ class Settings(BaseSettings):
     cookie_secure: bool
     cookie_samesite: SameSiteEnum = Field(default=SameSiteEnum.lax)
     cookie_path: str
-    backend_cors_origins: str
+    backend_cors_origins: str = Field(
+        default=""
+    )  # 👈 str, not list — avoids JSON decode
     cookie_domain: str | None = None
     debug: bool
 
-    # FIX: Convert comma-separated string into Python list
-    @field_validator("backend_cors_origins", mode="after")
-    def convert_cors_to_list(cls, value: Any):
-        if not value:
-            return []
-        return [origin.strip() for origin in value.split(",") if origin.strip()]
+    @model_validator(mode="after")
+    def parse_list_fields(self) -> "Settings":
+        value = self.backend_cors_origins
+        if not value or value.strip() == "":
+            object.__setattr__(self, "backend_cors_origins", [])
+        else:
+            origins = [o.strip() for o in value.split(",") if o.strip()]
+            object.__setattr__(self, "backend_cors_origins", origins)
+        return self
 
-    # SSM can't store empty strings, so "none" is used as a sentinel meaning "unset"
     @field_validator("cookie_domain", mode="before")
-    def normalize_cookie_domain(cls, value: Any):
+    @classmethod
+    def normalize_cookie_domain(cls, value: Any) -> str | None:
         if not value or str(value).lower() == "none":
             return None
         return value

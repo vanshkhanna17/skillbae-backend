@@ -10,6 +10,10 @@
 #   SecureString → sensitive secrets, encrypted at rest by AWS KMS (free tier)
 # ─────────────────────────────────────────────────────────────────────────────
 
+data "aws_ssm_parameter" "frontend_cdn_domain" {
+  name = "/skillbae/frontend/cloudfront_domain"
+}
+
 locals {
   ssm_prefix = "/${var.namespace}-${var.environment}-${var.name}"
 }
@@ -91,7 +95,7 @@ resource "aws_ssm_parameter" "cookie_domain" {
 resource "aws_ssm_parameter" "cors_origins" {
   name  = "${local.ssm_prefix}/BACKEND_CORS_ORIGINS"
   type  = "String"
-  value = aws_instance.app_server.public_ip # passed via staging.tfvars — e.g. "http://<EC2-IP>"
+  value = "https://${data.aws_ssm_parameter.frontend_cdn_domain.value},http://localhost:5173,http://127.0.0.1:5173"
 }
 
 # ─── Database Config (String — not secret, host/db name are not sensitive) ───
