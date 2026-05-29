@@ -105,6 +105,16 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      redis:
+        image: redis:8.4-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DATABASE_SYNC_URL: ${{ secrets.DATABASE_SYNC_URL }}
@@ -121,6 +131,7 @@ jobs:
       APP_NAME: ${{ secrets.APP_NAME }}
       APP_DESCRIPTION: ${{ secrets.APP_DESCRIPTION }}
       APP_VERSION: ${{ secrets.APP_VERSION }}
+      REDIS_URL: ${{ secrets.REDIS_URL }}
 
     steps:
       - name: Checkout Code

@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     )  # 👈 str, not list — avoids JSON decode
     cookie_domain: str | None = None
     debug: bool
+    redis_url: str
 
     @model_validator(mode="after")
     def parse_list_fields(self) -> "Settings":

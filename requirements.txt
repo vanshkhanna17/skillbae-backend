@@ -40,6 +40,8 @@ fastapi==0.135.1
     # via -r requirements.in
 h11==0.16.0
     # via uvicorn
+hiredis==3.3.1
+    # via redis
 httptools==0.7.1
     # via uvicorn
 idna==3.11
@@ -85,7 +87,7 @@ python-multipart==0.0.22
     # via -r requirements.in
 pyyaml==6.0.3
     # via uvicorn
-redis==7.3.0
+redis[hiredis]==7.3.0
     # via -r requirements.in
 rsa==4.9.1
     # via python-jose

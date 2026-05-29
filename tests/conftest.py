@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from sqlalchemy.pool import NullPool
 
-from app.api.deps import get_current_user
 from app.core.config import settings
+from app.core.deps import get_current_user
 from app.db.base_class import Base
 from app.db.session import get_session
 from app.main import app
@@ -57,6 +57,7 @@ async def override_current_user():
     return UserDetails(
         id=1,
         email="test@skillbae.com",
+        username="test_user",
         first_name="PyTest",
         last_name="User",
         created_at=datetime.now(),

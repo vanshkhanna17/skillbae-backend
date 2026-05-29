@@ -3,7 +3,7 @@ from typing import Sequence
 
 from fastapi import APIRouter, Depends, Query, Response
 
-from app.api.deps import get_current_user, get_feeds_service
+from app.core.deps import get_current_user, get_feeds_service
 from app.models.comments import Comments
 from app.models.posts import Post
 from app.schemas.feed import (
