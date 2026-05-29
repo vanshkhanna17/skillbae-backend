@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Request, Response
 
-from app.api.deps import get_auth_service
 from app.core.config import settings
+from app.core.deps import get_auth_service
 from app.core.limiter import limiter
 from app.schemas.user import UserCreate, UserDetails, UserInDb, UserLogin
 from app.services.auth_service import AuthService

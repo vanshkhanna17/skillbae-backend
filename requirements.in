@@ -18,6 +18,7 @@ python-jose
 python-multipart
 
 redis
+redis[hiredis]
 
 slowapi
 sentry-sdk
