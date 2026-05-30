@@ -19,7 +19,8 @@ async def get_token_from_ws(
     WHY keep both?
     Starlette's TestClient cookie jar doesn't forward to WS upgrade requests.
     Rather than fighting the test tooling, we accept a query param fallback.
-    In production, the frontend never uses the query param — the cookie is always present.
+    In production, the frontend never uses the query param — the cookie is always
+    present.
     """
     cookie_token = ws.cookies.get("access_token")
     return cookie_token or token
