@@ -12,6 +12,7 @@ from starlette.responses import Response
 from app.api.v1.auth import router as auth_router
 from app.api.v1.feed import router as feed_router
 from app.api.v1.users import router as user_router
+from app.api.v1.ws import router as ws_router
 from app.core.config import settings
 from app.core.limiter import limiter
 from app.core.redis import get_redis_client
@@ -65,6 +66,7 @@ async def add_cache_control(
 app.include_router(auth_router, tags=["Auth"], prefix="/auth")
 app.include_router(user_router, tags=["User"], prefix="/users")
 app.include_router(feed_router, tags=["Feed"], prefix="/feed")
+app.include_router(ws_router, tags=["WebSocket"], prefix="/websocket")
 
 
 @app.get("/")

@@ -1,4 +1,5 @@
 from datetime import datetime
+from unittest.mock import AsyncMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -57,7 +58,7 @@ async def override_current_user():
     return UserDetails(
         id=1,
         email="test@skillbae.com",
-        username="test_user",
+        # username="test_user",
         first_name="PyTest",
         last_name="User",
         created_at=datetime.now(),
@@ -84,3 +85,35 @@ def test_client(test_db_engine: AsyncEngine):
     with TestClient(app) as client:
         yield client
     app.dependency_overrides = {}
+
+
+@pytest.fixture
+def fake_redis():
+    store = {}
+
+    redis = AsyncMock()
+
+    # redis.set("presence:1", "1", ex=86400) → stores in dict
+    async def fake_set(
+        key: str, value: str, **kwargs  # pyright: ignore[reportMissingParameterType]
+    ):
+        store[key] = value
+
+    redis.set.side_effect = fake_set
+
+    # redis.delete("presence:1") → removes from dict
+    async def fake_delete(key: str):
+        store.pop(key, None)
+
+    redis.delete.side_effect = fake_delete
+
+    # redis.get("presence:1") → reads from dict
+    async def fake_get(key: str):
+        return store.get(key)
+
+    redis.get.side_effect = fake_get
+
+    # expose the store so tests can assert on it
+    redis.store = store
+
+    return redis

@@ -40,6 +40,16 @@ async def login(
         max_age=60 * 60 * 24 * settings.refresh_token_expire_days,
         domain=settings.cookie_domain,
     )
+    response.set_cookie(
+        key="auth_access_token",
+        value=tokens["access_token"],
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite.value,
+        path=settings.cookie_path,
+        max_age=60 * settings.access_token_expire_minutes,
+        domain=settings.cookie_domain,
+    )
     return {
         "access_token": tokens["access_token"],
         "token_type": "bearer",
@@ -65,6 +75,16 @@ async def refresh_token(
         max_age=60 * 60 * 24 * settings.refresh_token_expire_days,
         domain=settings.cookie_domain,
     )
+    response.set_cookie(
+        key="auth_access_token",
+        value=new_tokens["access_token"],
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite.value,
+        path=settings.cookie_path,
+        max_age=60 * settings.access_token_expire_minutes,
+        domain=settings.cookie_domain,
+    )
     return {"access_token": new_tokens["access_token"], "token_type": "bearer"}
 
 
@@ -79,6 +99,13 @@ async def logout(
     await auth_service.logout(refresh_token)
     response.delete_cookie(
         key="auth_refresh_token",
+        path=settings.cookie_path,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite.value,
+        httponly=True,
+    )
+    response.delete_cookie(
+        key="auth_access_token",
         path=settings.cookie_path,
         secure=settings.cookie_secure,
         samesite=settings.cookie_samesite.value,
