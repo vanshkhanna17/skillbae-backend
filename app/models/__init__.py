@@ -1,5 +1,8 @@
 # Add more models as you create them
 from .categories import Categories as Categories
+from .chats import ConversationMembers as ConversationMembers
+from .chats import Conversations as Conversations
+from .chats import Messages as Messages
 from .comments import Comments as Comments
 from .posts import Post as Post
 from .refresh_tokens import RefreshTokens as RefreshTokens

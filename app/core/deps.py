@@ -3,13 +3,15 @@
 
 from typing import Optional
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 from app.core.exceptions import AppException
 from app.core.jwt import decode_token
+from app.core.redis import get_redis_client
 from app.db.session import get_session
 from app.models.user import User
 from app.repo.comments_repo import CommentsRepo
@@ -69,14 +71,21 @@ async def get_feeds_service(
 
 # functions
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    # ↑ FastAPI automatically:
-    #   - Reads the "Authorization: Bearer <token>" header
-    #   - Extracts the token string
-    #   - Passes it as the `token` argument here
+    request: Request,
     repo: UserRepo = Depends(get_user_repo),
 ) -> UserDetails:
+    token: str | None = request.cookies.get("auth_access_token")
+
+    if token is None:
+        raise AppException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            error="Unauthorized",
+            message="Missing authentication token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     token_payload: AccessTokenPayload | None = decode_token(token)
+
     if token_payload is None:
         raise AppException(
             status_code=HTTP_401_UNAUTHORIZED,
@@ -101,3 +110,7 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return UserDetails.model_validate(user)
+
+
+async def get_redis() -> Redis:
+    return await get_redis_client()
