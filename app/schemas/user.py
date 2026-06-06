@@ -4,8 +4,9 @@ import re
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import EmailStr, Field, model_validator
+from pydantic import EmailStr, Field, field_validator, model_validator
 
+from app.core.username import validate_username
 from app.schemas.base import BaseSchema
 
 COMMON_PASSWORDS = {
@@ -22,6 +23,7 @@ COMMON_PASSWORDS = {
 
 class UserDetails(BaseSchema):
     id: int
+    username: str
     email: EmailStr
     first_name: Optional[str] = None
     last_name: Optional[str] = None
@@ -34,6 +36,7 @@ class UserDetails(BaseSchema):
 
 class UserCreate(BaseSchema):
     email: EmailStr
+    username: str
     password: str = Field(..., min_length=8, max_length=20)
     first_name: Optional[str] = Field(None, max_length=50)
     last_name: Optional[str] = Field(None, max_length=50)
@@ -64,6 +67,11 @@ class UserCreate(BaseSchema):
         if errors:
             raise ValueError(", ".join(errors))
         return values
+
+    @field_validator("username")
+    @classmethod
+    def clean_username(cls, value: str) -> str:
+        return validate_username(value)
 
 
 class UserLogin(BaseSchema):

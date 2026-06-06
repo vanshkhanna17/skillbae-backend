@@ -51,6 +51,15 @@ class AuthService:
                 message="User already exists",
                 field="email",
             )
+        existing_user = await self.user_repo.get_user_by_username(data.username)
+        if existing_user:
+            raise AppException(
+                status_code=status.HTTP_409_CONFLICT,
+                error="Conflict",
+                message="Username already exists",
+                field="username",
+            )
+
         hashed_password: str = create_hashed_password(data.password)
         user: User = await self.user_repo.create(data, hashed_password=hashed_password)
         return UserInDb.model_validate(user)
