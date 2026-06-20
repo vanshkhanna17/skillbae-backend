@@ -18,6 +18,7 @@ class UserRepo(BaseRepo):
     async def create(self, data: UserCreate, **kwargs: object) -> User:
         new_user = User(
             email=data.email,
+            username=data.username,
             hashed_password=kwargs["hashed_password"],
             first_name=data.first_name,
             last_name=data.last_name,

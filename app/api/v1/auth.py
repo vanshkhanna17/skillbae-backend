@@ -29,7 +29,7 @@ async def login(
     response: Response,
     auth_service: AuthService = Depends(get_auth_service),
 ) -> dict[str, str]:
-    tokens = await auth_service.login(creds.email, creds.password)
+    tokens = await auth_service.login(creds)
     response.set_cookie(
         key="auth_refresh_token",
         value=tokens["refresh_token"],

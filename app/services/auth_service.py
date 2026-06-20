@@ -32,7 +32,7 @@ from app.core.security import (
 from app.models.user import User, utc_now
 from app.repo.refresh_token_repo import RefreshTokenRepo
 from app.repo.user_repo import UserRepo
-from app.schemas.user import UserCreate, UserInDb
+from app.schemas.user import UserCreate, UserInDb, UserLogin
 from app.structures.tokens import Token
 
 
@@ -64,10 +64,18 @@ class AuthService:
         user: User = await self.user_repo.create(data, hashed_password=hashed_password)
         return UserInDb.model_validate(user)
 
-    async def login(
-        self, email: str, password: str, meta: Optional[str] = None
-    ) -> Token:
-        user = await self.user_repo.get_user_by_email(email)
+    async def login(self, creds: UserLogin, meta: Optional[str] = None) -> Token:
+        if creds.username is not None:
+            user = await self.user_repo.get_user_by_username(creds.username)
+        elif creds.email is not None:
+            user = await self.user_repo.get_user_by_email(creds.email)
+        else:
+            raise AppException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                error="Unprocessable Entity",
+                message="Either email or username is required",
+                field="email",
+            )
         if not user:
             raise AppException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -76,7 +84,7 @@ class AuthService:
                 field="email",
             )
 
-        if not verify_password(password, user.hashed_password):
+        if not verify_password(creds.password, user.hashed_password):
             raise AppException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 error="Unauthorized",
