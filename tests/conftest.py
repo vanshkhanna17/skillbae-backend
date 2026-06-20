@@ -58,7 +58,7 @@ async def override_current_user():
     return UserDetails(
         id=1,
         email="test@skillbae.com",
-        # username="test_user",
+        username="test_user",
         first_name="PyTest",
         last_name="User",
         created_at=datetime.now(),
