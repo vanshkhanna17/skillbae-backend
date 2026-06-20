@@ -28,7 +28,6 @@ from app.models import RefreshTokens
 
 
 class RefreshTokenRepo:
-
     def __init__(self, session: AsyncSession):
         self.session = session
 

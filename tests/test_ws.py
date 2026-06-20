@@ -48,13 +48,14 @@ def wait_for_connected(ws: WebSocketTestSession) -> None:
 
 
 class TestWebSocket:
-
     def teardown_method(self):
         app.dependency_overrides = {}
         ws_connection_manger.active.clear()
 
     def test_invalid_jwt_returns_4001(
-        self, test_db_engine, fake_redis  # pyright: ignore[reportMissingParameterType]
+        self,
+        test_db_engine,
+        fake_redis,  # pyright: ignore[reportMissingParameterType]
     ):  # pyright: ignore[reportMissingParameterType]
         """
         Invalid JWT → server rejects connection.
@@ -76,7 +77,9 @@ class TestWebSocket:
         assert "presence:1" not in fake_redis.store
 
     def test_missing_token_returns_4001(
-        self, test_db_engine, fake_redis  # pyright: ignore[reportMissingParameterType]
+        self,
+        test_db_engine,
+        fake_redis,  # pyright: ignore[reportMissingParameterType]
     ):  # pyright: ignore[reportMissingParameterType]
         """No token at all → server rejects connection."""
         client = make_ws_client(test_db_engine, fake_redis)
@@ -88,7 +91,9 @@ class TestWebSocket:
         assert "presence:1" not in fake_redis.store
 
     def test_valid_jwt_sets_presence_in_redis(
-        self, test_db_engine, fake_redis  # pyright: ignore[reportMissingParameterType]
+        self,
+        test_db_engine,
+        fake_redis,  # pyright: ignore[reportMissingParameterType]
     ):  # pyright: ignore[reportMissingParameterType]
         """Valid JWT → connection accepted → presence key set then deleted."""
         client = make_ws_client(test_db_engine, fake_redis)
@@ -102,7 +107,9 @@ class TestWebSocket:
         assert "presence:1" not in fake_redis.store  # ✅ deleted on disconnect
 
     def test_two_connections_both_receive_message(
-        self, test_db_engine, fake_redis  # pyright: ignore[reportMissingParameterType]
+        self,
+        test_db_engine,
+        fake_redis,  # pyright: ignore[reportMissingParameterType]
     ):  # pyright: ignore[reportMissingParameterType]
         """Two tabs for same user → both receive a pushed event."""
         token = make_valid_token(user_id=1)
@@ -136,7 +143,9 @@ class TestWebSocket:
                 assert ws2.receive_json() == {"topic": "notif", "payload": "hello"}
 
     def test_closing_one_tab_keeps_presence(
-        self, test_db_engine, fake_redis  # pyright: ignore[reportMissingParameterType]
+        self,
+        test_db_engine,
+        fake_redis,  # pyright: ignore[reportMissingParameterType]
     ):  # pyright: ignore[reportMissingParameterType]
         """Tab 1 closes → presence stays. Tab 2 closes → presence deleted."""
         token = make_valid_token(user_id=1)

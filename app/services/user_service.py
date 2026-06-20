@@ -8,7 +8,6 @@ from app.schemas.user import UserDetails
 
 
 class UserService:
-
     def __init__(self, repo: UserRepo) -> None:
         self.repo: UserRepo = repo
 

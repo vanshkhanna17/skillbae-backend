@@ -53,7 +53,6 @@ async def check_username_availability(
     try:
         clean = validate_username(username)
     except ValueError as e:
-
         return {"available": False, "resaon": str(e)}
 
     result = await db.execute(select(User).where(User.username == clean))

@@ -36,7 +36,7 @@ class UserDetails(BaseSchema):
 
 class UserCreate(BaseSchema):
     email: EmailStr
-    username: str
+    username: str = Field(..., min_length=3, max_length=30)
     password: str = Field(..., min_length=8, max_length=20)
     first_name: Optional[str] = Field(None, max_length=50)
     last_name: Optional[str] = Field(None, max_length=50)
@@ -75,8 +75,9 @@ class UserCreate(BaseSchema):
 
 
 class UserLogin(BaseSchema):
-    email: EmailStr
+    email: Optional[EmailStr] = Field(None)
     password: str
+    username: Optional[str] = Field(None, min_length=3, max_length=30)
 
 
 class UserInDb(UserDetails):

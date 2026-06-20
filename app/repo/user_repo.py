@@ -11,13 +11,13 @@ from app.schemas.user import UserCreate
 
 
 class UserRepo(BaseRepo):
-
     def __init__(self, session: AsyncSession) -> None:
         self.session: AsyncSession = session
 
     async def create(self, data: UserCreate, **kwargs: object) -> User:
         new_user = User(
             email=data.email,
+            username=data.username,
             hashed_password=kwargs["hashed_password"],
             first_name=data.first_name,
             last_name=data.last_name,
@@ -80,18 +80,19 @@ class UserRepo(BaseRepo):
         )
         if category_ids:
             await self.session.execute(
-                insert(user_categories).values(
-                    [{"user_id": user_id, "category_id": cid} for cid in category_ids]
-                )
+                insert(user_categories).values([
+                    {"user_id": user_id, "category_id": cid} for cid in category_ids
+                ])
             )
 
         await self.session.commit()
 
     async def add_category(self, user_id: int, category_id: int):
         return await self.session.execute(
-            insert(user_categories).values(
-                {"user_id": user_id, "category_id": category_id}
-            )
+            insert(user_categories).values({
+                "user_id": user_id,
+                "category_id": category_id,
+            })
         )
 
     async def get_categories(self, user_id: int):
