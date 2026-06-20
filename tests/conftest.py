@@ -95,7 +95,9 @@ def fake_redis():
 
     # redis.set("presence:1", "1", ex=86400) → stores in dict
     async def fake_set(
-        key: str, value: str, **kwargs  # pyright: ignore[reportMissingParameterType]
+        key: str,
+        value: str,
+        **kwargs,  # pyright: ignore[reportMissingParameterType]
     ):
         store[key] = value
 

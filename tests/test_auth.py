@@ -23,11 +23,19 @@ def test_register(test_client: TestClient):
 def test_register_duplicate_email(test_client: TestClient):
     test_client.post(
         "/auth/register",
-        json={"email": "duplicate@skillbae.com", "username": "dup_user1", "password": "Strong@pass1"},
+        json={
+            "email": "duplicate@skillbae.com",
+            "username": "dup_user1",
+            "password": "Strong@pass1",
+        },
     )
     response = test_client.post(
         "/auth/register",
-        json={"email": "duplicate@skillbae.com", "username": "dup_user2", "password": "Strong@pass1"},
+        json={
+            "email": "duplicate@skillbae.com",
+            "username": "dup_user2",
+            "password": "Strong@pass1",
+        },
     )
     assert response.status_code == 409
 

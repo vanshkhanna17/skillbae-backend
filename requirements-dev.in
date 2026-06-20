@@ -3,6 +3,7 @@ isort
 pytest
 pytest-asyncio
 httpx
+pre-commit
 
 pip-tools
 pip-chill

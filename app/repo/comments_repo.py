@@ -11,7 +11,6 @@ from app.schemas.feed import CommentCreate
 
 
 class CommentsRepo(BaseRepo):
-
     async def create(self, data: CommentCreate, **kwargs: object) -> Comments:
         new_comment = Comments(user_id=kwargs["user_id"], **data.model_dump())
         try:

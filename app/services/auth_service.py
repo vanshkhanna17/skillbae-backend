@@ -37,7 +37,6 @@ from app.structures.tokens import Token
 
 
 class AuthService:
-
     def __init__(self, user_repo: UserRepo, refresh_repo: RefreshTokenRepo) -> None:
         self.user_repo: UserRepo = user_repo
         self.refresh_repo: RefreshTokenRepo = refresh_repo

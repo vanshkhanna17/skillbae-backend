@@ -11,7 +11,6 @@ from app.schemas.user import UserCreate
 
 
 class UserRepo(BaseRepo):
-
     def __init__(self, session: AsyncSession) -> None:
         self.session: AsyncSession = session
 
@@ -81,18 +80,19 @@ class UserRepo(BaseRepo):
         )
         if category_ids:
             await self.session.execute(
-                insert(user_categories).values(
-                    [{"user_id": user_id, "category_id": cid} for cid in category_ids]
-                )
+                insert(user_categories).values([
+                    {"user_id": user_id, "category_id": cid} for cid in category_ids
+                ])
             )
 
         await self.session.commit()
 
     async def add_category(self, user_id: int, category_id: int):
         return await self.session.execute(
-            insert(user_categories).values(
-                {"user_id": user_id, "category_id": category_id}
-            )
+            insert(user_categories).values({
+                "user_id": user_id,
+                "category_id": category_id,
+            })
         )
 
     async def get_categories(self, user_id: int):

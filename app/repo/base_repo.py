@@ -8,7 +8,6 @@ S = TypeVar("S")
 
 
 class BaseRepo(ABC, Generic[T, S]):
-
     def __init__(self, session: AsyncSession) -> None:
         self.session: AsyncSession = session
 
