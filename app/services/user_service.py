@@ -12,12 +12,14 @@ class UserService:
         self.repo: UserRepo = repo
 
     async def get_user(
-        self, user_email: str, user_id: Optional[int] = None
+        self, user_email: Optional[str] = None, user_id: Optional[int] = None
     ) -> UserDetails:
         if user_id:
             user = await self.repo.get_by_id(user_id)
-        else:
+        elif user_email:
             user = await self.repo.get_user_by_email(user_email)
+        else:
+            user = None
         if not user:
             raise AppException(
                 status_code=status.HTTP_409_CONFLICT,

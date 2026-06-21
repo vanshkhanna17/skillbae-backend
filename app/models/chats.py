@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import UUID, Boolean, DateTime, Integer
+from sqlalchemy import UUID, Boolean, DateTime, Integer, UniqueConstraint
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.schema import ForeignKey
@@ -19,10 +19,17 @@ class MessageType(str, enum.Enum):
 
 class Conversations(Base):
     __tablename__ = "conversations"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id_low", "user_id_high", name="unique_conversation_pair"
+        ),
+    )
 
     id: Mapped[str] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    user_id_low: Mapped[int] = mapped_column(Integer, nullable=False)
+    user_id_high: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
 
 

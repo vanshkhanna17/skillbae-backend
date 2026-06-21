@@ -14,12 +14,14 @@ from app.core.jwt import decode_token
 from app.core.redis import get_redis_client
 from app.db.session import get_session
 from app.models.user import User
+from app.repo.chats_repo import ChatsRepo
 from app.repo.comments_repo import CommentsRepo
 from app.repo.feed_repo import FeedRepo
 from app.repo.refresh_token_repo import RefreshTokenRepo
 from app.repo.user_repo import UserRepo
 from app.schemas.user import UserDetails
 from app.services.auth_service import AuthService
+from app.services.chat_service import ChatsService
 from app.services.feed_service import FeedService
 from app.services.user_service import UserService
 from app.structures.tokens import AccessTokenPayload
@@ -27,7 +29,9 @@ from app.structures.tokens import AccessTokenPayload
 oauth2_scheme: OAuth2PasswordBearer = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
-# repos
+# ── Repos ────────────────────────────────────────────────────────────
+
+
 async def get_user_repo(
     session: AsyncSession = Depends(get_session),
 ) -> UserRepo:
@@ -50,7 +54,13 @@ async def get_comments_repo(
     return CommentsRepo(session)
 
 
-# services
+async def get_chats_repo(session: AsyncSession = Depends(get_session)):
+    return ChatsRepo(session)
+
+
+# ── Services ─────────────────────────────────────────────────────────
+
+
 async def get_user_service(repo: UserRepo = Depends(get_user_repo)) -> UserService:
     return UserService(repo)
 
@@ -69,7 +79,13 @@ async def get_feeds_service(
     return FeedService(feed_repo, comments_repo)
 
 
-# functions
+async def get_chats_service(chats_repo: ChatsRepo = Depends(get_chats_repo)):
+    return ChatsService(chats_repo)
+
+
+# ── Auth ─────────────────────────────────────────────────────────────
+
+
 async def get_current_user(
     request: Request,
     repo: UserRepo = Depends(get_user_repo),
@@ -110,6 +126,9 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return UserDetails.model_validate(user)
+
+
+# ── Infra ────────────────────────────────────────────────────────────
 
 
 async def get_redis() -> Redis:
