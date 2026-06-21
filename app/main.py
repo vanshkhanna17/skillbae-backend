@@ -10,6 +10,7 @@ from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
 from app.api.v1.auth import router as auth_router
+from app.api.v1.chats import router as chats_router
 from app.api.v1.feed import router as feed_router
 from app.api.v1.users import router as user_router
 from app.api.v1.ws import router as ws_router
@@ -67,6 +68,7 @@ app.include_router(auth_router, tags=["Auth"], prefix="/auth")
 app.include_router(user_router, tags=["User"], prefix="/users")
 app.include_router(feed_router, tags=["Feed"], prefix="/feed")
 app.include_router(ws_router, tags=["WebSocket"], prefix="/websocket")
+app.include_router(chats_router, tags=["Chats"], prefix="/conversation")
 
 
 @app.get("/")
