@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from app.core.deps import get_chats_service, get_current_user, get_user_repo
 from app.main import app
-from app.schemas.chats import ConversationOut
+from app.schemas.chats import ConversationOut, MessageOut
 from app.schemas.user import UserDetails
 
 MOCK_USER = UserDetails(
@@ -54,7 +54,7 @@ def test_create_conversation_success(
         conversation_id=conv_id, created=True
     )
 
-    response = client.post("/conversation/create", json={"target_user_id": 2})
+    response = client.post("/conversations/create", json={"target_user_id": 2})
 
     assert response.status_code == 200
     data = response.json()
@@ -72,14 +72,14 @@ def test_create_conversation_returns_existing(
         conversation_id=conv_id, created=False
     )
 
-    response = client.post("/conversation/create", json={"target_user_id": 2})
+    response = client.post("/conversations/create", json={"target_user_id": 2})
 
     assert response.status_code == 200
     assert response.json()["created"] is False
 
 
 def test_cannot_create_conversation_with_self(client: TestClient):
-    response = client.post("/conversation/create", json={"target_user_id": 1})
+    response = client.post("/conversations/create", json={"target_user_id": 1})
 
     assert response.status_code == 403
 
@@ -87,12 +87,66 @@ def test_cannot_create_conversation_with_self(client: TestClient):
 def test_target_user_not_found(client: TestClient, mock_user_repo: AsyncMock):
     mock_user_repo.get_by_id.return_value = None
 
-    response = client.post("/conversation/create", json={"target_user_id": 999})
+    response = client.post("/conversations/create", json={"target_user_id": 999})
 
     assert response.status_code == 404
 
 
 def test_missing_target_user_id(client: TestClient):
-    response = client.post("/conversation/create", json={})
+    response = client.post("/conversations/create", json={})
+
+    assert response.status_code == 422
+
+
+# ── Send Message ────────────────────────────────────────────────────
+
+
+MOCK_MESSAGE_OUT = MessageOut(
+    id=str(uuid.uuid4()),
+    conversation_id=str(uuid.uuid4()),
+    sender_id=1,
+    content="hello",
+    created_at=datetime.now(timezone.utc),
+    updated_at=datetime.now(timezone.utc),
+    is_deleted=False,
+    message_type="text",
+)
+
+
+def test_send_message_success(client: TestClient, mock_chat_service: AsyncMock):
+    mock_chat_service.is_conversation_member.return_value = True
+    mock_chat_service.send_message.return_value = MOCK_MESSAGE_OUT
+    conv_id = MOCK_MESSAGE_OUT.conversation_id
+
+    response = client.post(
+        f"/conversations/{conv_id}/message", json={"content": "hello"}
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["content"] == "hello"
+    assert data["sender_id"] == 1
+    assert data["message_type"] == "text"
+    mock_chat_service.is_conversation_member.assert_awaited_once_with(conv_id, 1)
+    mock_chat_service.send_message.assert_awaited_once()
+
+
+def test_send_message_not_a_member(client: TestClient, mock_chat_service: AsyncMock):
+    mock_chat_service.is_conversation_member.return_value = False
+    conv_id = str(uuid.uuid4())
+
+    response = client.post(
+        f"/conversations/{conv_id}/message", json={"content": "hello"}
+    )
+
+    assert response.status_code == 403
+    mock_chat_service.send_message.assert_not_awaited()
+
+
+def test_send_message_missing_content(client: TestClient, mock_chat_service: AsyncMock):
+    mock_chat_service.is_conversation_member.return_value = True
+    conv_id = str(uuid.uuid4())
+
+    response = client.post(f"/conversations/{conv_id}/message", json={})
 
     assert response.status_code == 422

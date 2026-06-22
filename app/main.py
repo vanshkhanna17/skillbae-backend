@@ -68,7 +68,7 @@ app.include_router(auth_router, tags=["Auth"], prefix="/auth")
 app.include_router(user_router, tags=["User"], prefix="/users")
 app.include_router(feed_router, tags=["Feed"], prefix="/feed")
 app.include_router(ws_router, tags=["WebSocket"], prefix="/websocket")
-app.include_router(chats_router, tags=["Chats"], prefix="/conversation")
+app.include_router(chats_router, tags=["Chats"], prefix="/conversations")
 
 
 @app.get("/")
