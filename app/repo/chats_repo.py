@@ -3,9 +3,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppException
-from app.models import Conversations
-from app.models.chats import ConversationMembers
-from app.schemas.chats import ConversationOut
+from app.models.chats import ConversationMembers, Conversations, Messages, MessageType
+from app.schemas.chats import ConversationOut, MessageCreate, MessageOut
 
 
 class ChatsRepo:
@@ -67,3 +66,28 @@ class ChatsRepo:
                 message=f"Error creating conversation: {e}",
             )
         return ConversationOut(conversation_id=str(new_conversation.id), created=True)
+
+    async def is_conversation_member(self, conversation_id: str, user_id: int) -> bool:
+        result = await self.session.execute(
+            select(ConversationMembers)
+            .where(
+                ConversationMembers.conversation_id == conversation_id,
+                ConversationMembers.user_id == user_id,
+            )
+            .limit(1)
+        )
+        return result.scalar_one_or_none() is not None
+
+    async def send_message(
+        self, conversation_id: str, user_id: int, data: MessageCreate
+    ) -> MessageOut:
+        new_message = Messages(
+            conversation_id=conversation_id,
+            sender_id=user_id,
+            content=data.content,
+            message_type=MessageType.TEXT,
+        )
+        self.session.add(new_message)
+        await self.session.commit()
+        await self.session.refresh(new_message)
+        return MessageOut.model_validate(new_message)

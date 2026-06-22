@@ -17,6 +17,7 @@ from app.models.user import User
 from app.repo.chats_repo import ChatsRepo
 from app.repo.comments_repo import CommentsRepo
 from app.repo.feed_repo import FeedRepo
+from app.repo.redis_repo import RedisRepo
 from app.repo.refresh_token_repo import RefreshTokenRepo
 from app.repo.user_repo import UserRepo
 from app.schemas.user import UserDetails
@@ -27,6 +28,12 @@ from app.services.user_service import UserService
 from app.structures.tokens import AccessTokenPayload
 
 oauth2_scheme: OAuth2PasswordBearer = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+# ── Infra ────────────────────────────────────────────────────────────
+
+
+async def get_redis() -> Redis:
+    return await get_redis_client()
 
 
 # ── Repos ────────────────────────────────────────────────────────────
@@ -58,6 +65,12 @@ async def get_chats_repo(session: AsyncSession = Depends(get_session)):
     return ChatsRepo(session)
 
 
+async def get_redis_repo(
+    redis_client: Redis = Depends(get_redis),
+) -> RedisRepo:
+    return RedisRepo(redis_client)
+
+
 # ── Services ─────────────────────────────────────────────────────────
 
 
@@ -79,8 +92,11 @@ async def get_feeds_service(
     return FeedService(feed_repo, comments_repo)
 
 
-async def get_chats_service(chats_repo: ChatsRepo = Depends(get_chats_repo)):
-    return ChatsService(chats_repo)
+async def get_chats_service(
+    chats_repo: ChatsRepo = Depends(get_chats_repo),
+    redis_repo: RedisRepo = Depends(get_redis_repo),
+) -> ChatsService:
+    return ChatsService(chats_repo, redis_repo)
 
 
 # ── Auth ─────────────────────────────────────────────────────────────
@@ -126,10 +142,3 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return UserDetails.model_validate(user)
-
-
-# ── Infra ────────────────────────────────────────────────────────────
-
-
-async def get_redis() -> Redis:
-    return await get_redis_client()
