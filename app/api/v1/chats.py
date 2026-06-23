@@ -1,12 +1,13 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.core.deps import get_chats_service, get_current_user, get_user_repo
 from app.core.exceptions import AppException
 from app.repo.user_repo import UserRepo
 from app.schemas.chats import (
     ConversationCreate,
+    ConversationList,
     ConversationOut,
     MessageCreate,
     MessageOut,
@@ -59,3 +60,15 @@ async def send_message(
             message="User not part of the conversation",
         )
     return await chat_service.send_message(conversation_id, current_user.id, data)
+
+
+@router.get("/list")
+async def get_conversation_list(
+    current_user: currentUser,
+    chat_service: chatService,
+    cursor: str | None = Query(None, description="Pagination cursor"),
+    limit: int = Query(
+        20, ge=1, le=100, description="Number of conversations to return"
+    ),
+) -> ConversationList:
+    return await chat_service.get_conversations_list(current_user.id, limit, cursor)

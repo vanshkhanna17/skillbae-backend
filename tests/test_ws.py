@@ -14,6 +14,8 @@ from app.db.session import get_session
 from app.main import app
 from tests.conftest import make_override_db_session
 
+pytestmark = pytest.mark.integration
+
 # ── Helpers ────────────────────────────────────────────────────────────────
 
 WS_PATH = "/websocket/ws"  # ✅ matches prefix="/websocket" in main.py

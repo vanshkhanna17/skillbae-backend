@@ -1,4 +1,7 @@
+import pytest
 from fastapi.testclient import TestClient
+
+pytestmark = pytest.mark.integration
 
 
 def test_ping(test_client: TestClient):
