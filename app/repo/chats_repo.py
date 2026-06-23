@@ -103,7 +103,16 @@ class ChatsRepo:
         self.session.add(new_message)
         await self.session.commit()
         await self.session.refresh(new_message)
-        return MessageOut.model_validate(new_message)
+        return MessageOut(
+            id=str(new_message.id),
+            conversation_id=str(new_message.conversation_id),
+            sender_id=new_message.sender_id,
+            content=new_message.content,
+            created_at=new_message.created_at,
+            updated_at=new_message.updated_at,
+            is_deleted=new_message.is_deleted,
+            message_type=new_message.message_type.value,
+        )
 
     async def get_conversations_list(
         self, user_id: int, limit: int, cursor: str | None = None
@@ -236,7 +245,7 @@ class ChatsRepo:
             ).decode()
         conversations: list[ConversationListItem] = [
             ConversationListItem(
-                conversation_id=item.conversation_id,
+                conversation_id=str(item.conversation_id),
                 other_user=UserDetails.model_validate(item.User),
                 last_message=item.last_message,
                 last_message_at=item.last_message_at,

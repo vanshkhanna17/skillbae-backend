@@ -23,7 +23,7 @@ class MessageOut(BaseSchema):
     sender_id: int
     content: str
     created_at: datetime
-    updated_at: datetime
+    updated_at: datetime | None
     is_deleted: bool
     message_type: str
 
