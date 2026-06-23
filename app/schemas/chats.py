@@ -17,7 +17,7 @@ class MessageCreate(BaseSchema):
     content: str
 
 
-class MessageOut(BaseSchema):
+class Message(BaseSchema):
     id: str
     conversation_id: str
     sender_id: int
@@ -38,4 +38,9 @@ class ConversationListItem(BaseSchema):
 
 class ConversationList(BaseSchema):
     conversations: list[ConversationListItem]
+    next_cursor: str | None
+
+
+class MessageList(BaseSchema):
+    items: list[Message]
     next_cursor: str | None

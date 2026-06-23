@@ -13,7 +13,7 @@ from app.schemas.chats import (
     ConversationList,
     ConversationListItem,
     ConversationOut,
-    MessageOut,
+    Message,
 )
 from app.schemas.user import UserDetails
 
@@ -108,7 +108,7 @@ def test_missing_target_user_id(client: TestClient):
 # ── Send Message ────────────────────────────────────────────────────
 
 
-MOCK_MESSAGE_OUT = MessageOut(
+MOCK_MESSAGE_OUT = Message(
     id=str(uuid.uuid4()),
     conversation_id=str(uuid.uuid4()),
     sender_id=1,

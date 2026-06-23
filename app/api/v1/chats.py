@@ -9,8 +9,8 @@ from app.schemas.chats import (
     ConversationCreate,
     ConversationList,
     ConversationOut,
+    Message,
     MessageCreate,
-    MessageOut,
 )
 from app.schemas.user import UserDetails
 from app.services.chat_service import ChatsService
@@ -49,7 +49,7 @@ async def send_message(
     current_user: currentUser,
     chat_service: chatService,
     data: MessageCreate,
-) -> MessageOut:
+) -> Message:
     is_member = await chat_service.is_conversation_member(
         conversation_id, current_user.id
     )
@@ -72,3 +72,23 @@ async def get_conversation_list(
     ),
 ) -> ConversationList:
     return await chat_service.get_conversations_list(current_user.id, limit, cursor)
+
+
+@router.get("/{conversation_id}/messages")
+async def get_conversation_messages(
+    conversation_id: str,
+    current_user: currentUser,
+    chat_service: chatService,
+    cursor: str | None = Query(None, description="Pagination cursor"),
+    limit: int = Query(20, ge=1, le=100, description="Number of messages to return"),
+):
+    is_member = await chat_service.is_conversation_member(
+        conversation_id, current_user.id
+    )
+    if not is_member:
+        raise AppException(
+            status_code=403,
+            error="Forbidden",
+            message="User not part of the conversation",
+        )
+    return await chat_service.get_conversation_messages(conversation_id, limit, cursor)
