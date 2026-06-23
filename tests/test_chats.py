@@ -1,3 +1,5 @@
+import base64
+import json
 import uuid
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
@@ -7,7 +9,12 @@ from fastapi.testclient import TestClient
 
 from app.core.deps import get_chats_service, get_current_user, get_user_repo
 from app.main import app
-from app.schemas.chats import ConversationOut, MessageOut
+from app.schemas.chats import (
+    ConversationList,
+    ConversationListItem,
+    ConversationOut,
+    MessageOut,
+)
 from app.schemas.user import UserDetails
 
 MOCK_USER = UserDetails(
@@ -148,5 +155,124 @@ def test_send_message_missing_content(client: TestClient, mock_chat_service: Asy
     conv_id = str(uuid.uuid4())
 
     response = client.post(f"/conversations/{conv_id}/message", json={})
+
+    assert response.status_code == 422
+
+
+# ── List Conversations ─────────────────────────────────────────────
+
+
+OTHER_USER = UserDetails(
+    id=2,
+    email="other@skillbae.com",
+    username="other_user",
+    first_name="Other",
+    last_name="User",
+    created_at=datetime.now(timezone.utc),
+)
+
+
+def _make_conversation_list(
+    count: int = 1, next_cursor: str | None = None
+) -> ConversationList:
+    now = datetime.now(timezone.utc)
+    items = [
+        ConversationListItem(
+            conversation_id=str(uuid.uuid4()),
+            other_user=OTHER_USER,
+            last_message=f"message {i}",
+            last_message_at=now,
+            unread_count=i,
+        )
+        for i in range(count)
+    ]
+    return ConversationList(conversations=items, next_cursor=next_cursor)
+
+
+def test_list_conversations_success(client: TestClient, mock_chat_service: AsyncMock):
+    conv_list = _make_conversation_list(count=2)
+    mock_chat_service.get_conversations_list.return_value = conv_list
+
+    response = client.get("/conversations/list")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["conversations"]) == 2
+    assert data["next_cursor"] is None
+    assert data["conversations"][0]["other_user"]["username"] == "other_user"
+    assert data["conversations"][0]["unread_count"] == 0
+    assert data["conversations"][1]["unread_count"] == 1
+    mock_chat_service.get_conversations_list.assert_awaited_once_with(1, 20, None)
+
+
+def test_list_conversations_empty(client: TestClient, mock_chat_service: AsyncMock):
+    mock_chat_service.get_conversations_list.return_value = ConversationList(
+        conversations=[], next_cursor=None
+    )
+
+    response = client.get("/conversations/list")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["conversations"] == []
+    assert data["next_cursor"] is None
+
+
+def test_list_conversations_with_cursor(
+    client: TestClient, mock_chat_service: AsyncMock
+):
+    cursor = base64.b64encode(
+        json.dumps({
+            "last_message_at": "2026-01-01T00:00:00",
+            "conversation_id": "abc",
+        }).encode()
+    ).decode()
+    conv_list = _make_conversation_list(count=1, next_cursor=cursor)
+    mock_chat_service.get_conversations_list.return_value = conv_list
+
+    response = client.get(f"/conversations/list?cursor={cursor}")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["next_cursor"] == cursor
+    mock_chat_service.get_conversations_list.assert_awaited_once_with(1, 20, cursor)
+
+
+def test_list_conversations_with_pagination(
+    client: TestClient, mock_chat_service: AsyncMock
+):
+    next_cursor = "some_encoded_cursor"
+    conv_list = _make_conversation_list(count=3, next_cursor=next_cursor)
+    mock_chat_service.get_conversations_list.return_value = conv_list
+
+    response = client.get("/conversations/list?limit=3")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["conversations"]) == 3
+    assert data["next_cursor"] == next_cursor
+    mock_chat_service.get_conversations_list.assert_awaited_once_with(1, 3, None)
+
+
+def test_list_conversations_custom_limit(
+    client: TestClient, mock_chat_service: AsyncMock
+):
+    conv_list = _make_conversation_list(count=5)
+    mock_chat_service.get_conversations_list.return_value = conv_list
+
+    response = client.get("/conversations/list?limit=50")
+
+    assert response.status_code == 200
+    mock_chat_service.get_conversations_list.assert_awaited_once_with(1, 50, None)
+
+
+def test_list_conversations_limit_too_high(client: TestClient):
+    response = client.get("/conversations/list?limit=101")
+
+    assert response.status_code == 422
+
+
+def test_list_conversations_limit_too_low(client: TestClient):
+    response = client.get("/conversations/list?limit=0")
 
     assert response.status_code == 422

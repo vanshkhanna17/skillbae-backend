@@ -2,7 +2,7 @@ import json
 
 from app.repo.chats_repo import ChatsRepo
 from app.repo.redis_repo import RedisRepo
-from app.schemas.chats import MessageCreate
+from app.schemas.chats import ConversationList, MessageCreate
 
 
 class ChatsService:
@@ -30,3 +30,8 @@ class ChatsService:
             channel=f"conv:{conversation_id}", content=message_json
         )
         return message
+
+    async def get_conversations_list(
+        self, user_id: int, limit: int, cursor: str | None = None
+    ) -> ConversationList:
+        return await self.chats_repo.get_conversations_list(user_id, limit, cursor)

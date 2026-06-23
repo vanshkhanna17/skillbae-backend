@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from app.schemas.base import BaseSchema
+from app.schemas.user import UserDetails
 
 
 class ConversationCreate(BaseSchema):
@@ -25,3 +26,16 @@ class MessageOut(BaseSchema):
     updated_at: datetime
     is_deleted: bool
     message_type: str
+
+
+class ConversationListItem(BaseSchema):
+    conversation_id: str
+    other_user: UserDetails
+    last_message: str | None
+    last_message_at: datetime | None
+    unread_count: int
+
+
+class ConversationList(BaseSchema):
+    conversations: list[ConversationListItem]
+    next_cursor: str | None
