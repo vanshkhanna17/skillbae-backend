@@ -35,3 +35,10 @@ class ChatsService:
         self, user_id: int, limit: int, cursor: str | None = None
     ) -> ConversationList:
         return await self.chats_repo.get_conversations_list(user_id, limit, cursor)
+
+    async def get_conversation_messages(
+        self, conversation_id: str, limit: int, cursor: str | None = None
+    ):
+        return await self.chats_repo.get_conversation_messages(
+            conversation_id, limit, cursor
+        )

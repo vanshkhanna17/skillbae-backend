@@ -14,8 +14,9 @@ from app.schemas.chats import (
     ConversationList,
     ConversationListItem,
     ConversationOut,
+    Message,
     MessageCreate,
-    MessageOut,
+    MessageList,
 )
 from app.schemas.user import UserDetails
 
@@ -93,7 +94,7 @@ class ChatsRepo:
 
     async def send_message(
         self, conversation_id: str, user_id: int, data: MessageCreate
-    ) -> MessageOut:
+    ) -> Message:
         new_message = Messages(
             conversation_id=conversation_id,
             sender_id=user_id,
@@ -103,7 +104,7 @@ class ChatsRepo:
         self.session.add(new_message)
         await self.session.commit()
         await self.session.refresh(new_message)
-        return MessageOut(
+        return Message(
             id=str(new_message.id),
             conversation_id=str(new_message.conversation_id),
             sender_id=new_message.sender_id,
@@ -111,7 +112,7 @@ class ChatsRepo:
             created_at=new_message.created_at,
             updated_at=new_message.updated_at,
             is_deleted=new_message.is_deleted,
-            message_type=new_message.message_type.value,
+            message_type=new_message.message_type,
         )
 
     async def get_conversations_list(
@@ -254,3 +255,56 @@ class ChatsRepo:
             for item in items
         ]
         return ConversationList(conversations=conversations, next_cursor=next_cursor)
+
+    async def get_conversation_messages(
+        self, conversation_id: str, limit: int, cursor: str | None = None
+    ):
+        query = select(Messages).where(Messages.conversation_id == conversation_id)
+        if cursor:
+            cursor_obj = json.loads(base64.b64decode(cursor))
+            cursor_ts_raw = cursor_obj["created_at"]
+            cursor_mid = cursor_obj["id"]
+            cursor_ts = datetime.fromisoformat(cursor_ts_raw)
+            query = query.where(
+                or_(
+                    Messages.created_at < cursor_ts,
+                    and_(
+                        Messages.created_at == cursor_ts,
+                        Messages.id > cursor_mid,
+                    ),
+                )
+            )
+        query = query.order_by(Messages.created_at.desc(), Messages.id.asc()).limit(
+            limit + 1
+        )
+        result = await self.session.execute(query)
+        rows = result.scalars().all()
+        has_next = len(rows) > limit
+        items = rows[:limit]
+        next_cursor = None
+        if has_next:
+            last = items[-1]
+            next_cursor = base64.b64encode(
+                json.dumps({
+                    "created_at": last.created_at.isoformat(),
+                    "id": str(last.id),
+                }).encode()
+            ).decode()
+        messages = [
+            Message(
+                id=str(message.id),
+                conversation_id=str(message.conversation_id),
+                sender_id=message.sender_id,
+                content=(
+                    "This message was deleted"
+                    if message.is_deleted
+                    else message.content
+                ),
+                created_at=message.created_at,
+                updated_at=message.updated_at,
+                is_deleted=message.is_deleted,
+                message_type=message.message_type,
+            )
+            for message in reversed(items)
+        ]
+        return MessageList(items=messages, next_cursor=next_cursor)
