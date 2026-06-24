@@ -4,16 +4,16 @@ from app.schemas.base import BaseSchema
 from app.schemas.user import UserDetails
 
 
-class ConversationCreate(BaseSchema):
+class ConversationCreateRequest(BaseSchema):
     target_user_id: int
 
 
-class ConversationOut(BaseSchema):
+class ConversationCreateResponse(BaseSchema):
     conversation_id: str
     created: bool
 
 
-class MessageCreate(BaseSchema):
+class MessageCreateRequest(BaseSchema):
     content: str
 
 
@@ -44,3 +44,12 @@ class ConversationList(BaseSchema):
 class MessageList(BaseSchema):
     items: list[Message]
     next_cursor: str | None
+
+
+class MarkReadRequest(BaseSchema):
+    last_read_message_id: str
+
+
+class MarkReadResponse(BaseSchema):
+    last_read_message_id: str
+    last_read_at: datetime

@@ -3,13 +3,15 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import UUID, Boolean, DateTime, Integer, UniqueConstraint
+from sqlalchemy import UUID, Boolean, DateTime, Integer, Sequence, UniqueConstraint
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.schema import ForeignKey
 
 from app.db.base_class import Base
 from app.models.user import utc_now
+
+message_seq = Sequence("message_seq")
 
 
 class MessageType(str, enum.Enum):
@@ -58,6 +60,9 @@ class Messages(Base):
 
     id: Mapped[str] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    sequence: Mapped[int] = mapped_column(
+        Integer, message_seq, server_default=message_seq.next_value(), unique=True
     )
     conversation_id: Mapped[str] = mapped_column(
         UUID(as_uuid=True),
