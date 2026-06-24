@@ -6,11 +6,13 @@ from app.core.deps import get_chats_service, get_current_user, get_user_repo
 from app.core.exceptions import AppException
 from app.repo.user_repo import UserRepo
 from app.schemas.chats import (
-    ConversationCreate,
+    ConversationCreateRequest,
+    ConversationCreateResponse,
     ConversationList,
-    ConversationOut,
+    MarkReadRequest,
+    MarkReadResponse,
     Message,
-    MessageCreate,
+    MessageCreateRequest,
 )
 from app.schemas.user import UserDetails
 from app.services.chat_service import ChatsService
@@ -27,8 +29,8 @@ async def create_new_conversation(
     current_user: currentUser,
     user_repo: userRepo,
     chat_service: chatService,
-    data: ConversationCreate,
-) -> ConversationOut:
+    data: ConversationCreateRequest,
+) -> ConversationCreateResponse:
     if data.target_user_id == current_user.id:
         raise AppException(
             status_code=403,
@@ -48,7 +50,7 @@ async def send_message(
     conversation_id: str,
     current_user: currentUser,
     chat_service: chatService,
-    data: MessageCreate,
+    data: MessageCreateRequest,
 ) -> Message:
     is_member = await chat_service.is_conversation_member(
         conversation_id, current_user.id
@@ -92,3 +94,15 @@ async def get_conversation_messages(
             message="User not part of the conversation",
         )
     return await chat_service.get_conversation_messages(conversation_id, limit, cursor)
+
+
+@router.post("/{conversation_id}/read")
+async def mark_message_read(
+    conversation_id: str,
+    current_user: currentUser,
+    chat_service: chatService,
+    data: MarkReadRequest,
+) -> MarkReadResponse:
+    return await chat_service.mark_messages_read(
+        conversation_id, current_user.id, data.last_read_message_id
+    )

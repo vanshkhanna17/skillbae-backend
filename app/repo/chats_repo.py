@@ -2,20 +2,21 @@ import base64
 import json
 from datetime import datetime
 
-from sqlalchemy import and_, case, func, or_, select
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.core.exceptions import AppException
 from app.models.chats import ConversationMembers, Conversations, Messages, MessageType
-from app.models.user import User
+from app.models.user import User, utc_now
 from app.schemas.chats import (
+    ConversationCreateResponse,
     ConversationList,
     ConversationListItem,
-    ConversationOut,
+    MarkReadResponse,
     Message,
-    MessageCreate,
+    MessageCreateRequest,
     MessageList,
 )
 from app.schemas.user import UserDetails
@@ -27,7 +28,7 @@ class ChatsRepo:
 
     async def create_conversation(
         self, primary_user_id: int, secondary_user_id: int
-    ) -> ConversationOut:
+    ) -> ConversationCreateResponse:
         user_id_low = min(primary_user_id, secondary_user_id)
         user_id_high = max(primary_user_id, secondary_user_id)
 
@@ -39,7 +40,9 @@ class ChatsRepo:
         )
         existing_id = existing_result.scalar_one_or_none()
         if existing_id:
-            return ConversationOut(conversation_id=str(existing_id), created=False)
+            return ConversationCreateResponse(
+                conversation_id=str(existing_id), created=False
+            )
 
         new_conversation = Conversations(
             user_id_low=user_id_low, user_id_high=user_id_high
@@ -66,7 +69,9 @@ class ChatsRepo:
             )
             existing_id = result.scalar_one_or_none()
             if existing_id:
-                return ConversationOut(conversation_id=str(existing_id), created=False)
+                return ConversationCreateResponse(
+                    conversation_id=str(existing_id), created=False
+                )
             raise AppException(
                 status_code=500,
                 error="Something went wrong",
@@ -79,7 +84,9 @@ class ChatsRepo:
                 error="Something went wrong",
                 message=f"Error creating conversation: {e}",
             )
-        return ConversationOut(conversation_id=str(new_conversation.id), created=True)
+        return ConversationCreateResponse(
+            conversation_id=str(new_conversation.id), created=True
+        )
 
     async def is_conversation_member(self, conversation_id: str, user_id: int) -> bool:
         result = await self.session.execute(
@@ -93,7 +100,7 @@ class ChatsRepo:
         return result.scalar_one_or_none() is not None
 
     async def send_message(
-        self, conversation_id: str, user_id: int, data: MessageCreate
+        self, conversation_id: str, user_id: int, data: MessageCreateRequest
     ) -> Message:
         new_message = Messages(
             conversation_id=conversation_id,
@@ -145,9 +152,11 @@ class ChatsRepo:
             .subquery("latest_msg")
         )
 
+        last_read_msg = aliased(Messages)
         unread_count = (
             select(
-                Messages.conversation_id, func.count(Messages.id).label("unread_count")
+                Messages.conversation_id,
+                func.count(Messages.id).label("unread_count"),
             )
             .join(
                 target=ConversationMembers,
@@ -156,12 +165,16 @@ class ChatsRepo:
                     ConversationMembers.user_id == user_id,
                 ),
             )
+            .outerjoin(
+                target=last_read_msg,
+                onclause=last_read_msg.id == ConversationMembers.last_read_message_id,
+            )
             .where(
                 Messages.is_deleted.is_(False),
                 Messages.sender_id != user_id,
-                case(
-                    (ConversationMembers.last_read_at.is_(None), True),
-                    else_=(Messages.created_at > ConversationMembers.last_read_at),
+                or_(
+                    ConversationMembers.last_read_message_id.is_(None),
+                    Messages.sequence > last_read_msg.sequence,
                 ),
             )
             .group_by(Messages.conversation_id)
@@ -258,25 +271,13 @@ class ChatsRepo:
 
     async def get_conversation_messages(
         self, conversation_id: str, limit: int, cursor: str | None = None
-    ):
+    ) -> MessageList:
         query = select(Messages).where(Messages.conversation_id == conversation_id)
         if cursor:
             cursor_obj = json.loads(base64.b64decode(cursor))
-            cursor_ts_raw = cursor_obj["created_at"]
-            cursor_mid = cursor_obj["id"]
-            cursor_ts = datetime.fromisoformat(cursor_ts_raw)
-            query = query.where(
-                or_(
-                    Messages.created_at < cursor_ts,
-                    and_(
-                        Messages.created_at == cursor_ts,
-                        Messages.id > cursor_mid,
-                    ),
-                )
-            )
-        query = query.order_by(Messages.created_at.desc(), Messages.id.asc()).limit(
-            limit + 1
-        )
+            cursor_seq = cursor_obj["sequence"]
+            query = query.where(Messages.sequence < cursor_seq)
+        query = query.order_by(Messages.sequence.desc()).limit(limit + 1)
         result = await self.session.execute(query)
         rows = result.scalars().all()
         has_next = len(rows) > limit
@@ -285,10 +286,7 @@ class ChatsRepo:
         if has_next:
             last = items[-1]
             next_cursor = base64.b64encode(
-                json.dumps({
-                    "created_at": last.created_at.isoformat(),
-                    "id": str(last.id),
-                }).encode()
+                json.dumps({"sequence": last.sequence}).encode()
             ).decode()
         messages = [
             Message(
@@ -308,3 +306,69 @@ class ChatsRepo:
             for message in reversed(items)
         ]
         return MessageList(items=messages, next_cursor=next_cursor)
+
+    async def mark_messages_read(
+        self, conversation_id: str, user_id: int, last_read_message_id: str
+    ) -> MarkReadResponse:
+        msg_result = await self.session.execute(
+            select(Messages.sequence).where(
+                Messages.id == last_read_message_id,
+                Messages.conversation_id == conversation_id,
+            )
+        )
+        new_msg_seq = msg_result.scalar_one_or_none()
+        if not new_msg_seq:
+            raise AppException(
+                status_code=404,
+                error="Not Found",
+                message="Message not found in this conversation",
+            )
+        old_msg = aliased(Messages)
+        result = await self.session.execute(
+            update(ConversationMembers)
+            .where(
+                ConversationMembers.conversation_id == conversation_id,
+                ConversationMembers.user_id == user_id,
+                or_(
+                    ConversationMembers.last_read_message_id.is_(None),
+                    select(old_msg.sequence)
+                    .where(old_msg.id == ConversationMembers.last_read_message_id)
+                    .correlate(ConversationMembers)
+                    .scalar_subquery()
+                    < new_msg_seq,
+                ),
+            )
+            .values(
+                last_read_at=utc_now(),
+                last_read_message_id=last_read_message_id,
+            )
+        )
+        rows_updated: int = result.rowcount  # type: ignore[assignment]
+        if rows_updated == 0:
+            member_check = await self.session.execute(
+                select(ConversationMembers.conversation_id).where(
+                    ConversationMembers.conversation_id == conversation_id,
+                    ConversationMembers.user_id == user_id,
+                )
+            )
+            if not member_check.scalar_one_or_none():
+                raise AppException(
+                    status_code=403,
+                    error="Forbidden",
+                    message="Not a member of this conversation",
+                )
+        await self.session.commit()
+        current = await self.session.execute(
+            select(
+                ConversationMembers.last_read_message_id,
+                ConversationMembers.last_read_at,
+            ).where(
+                ConversationMembers.conversation_id == conversation_id,
+                ConversationMembers.user_id == user_id,
+            )
+        )
+        row = current.one()
+        return MarkReadResponse(
+            last_read_message_id=str(row.last_read_message_id),
+            last_read_at=row.last_read_at,
+        )

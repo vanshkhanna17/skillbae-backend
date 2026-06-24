@@ -10,9 +10,9 @@ from fastapi.testclient import TestClient
 from app.core.deps import get_chats_service, get_current_user, get_user_repo
 from app.main import app
 from app.schemas.chats import (
+    ConversationCreateResponse,
     ConversationList,
     ConversationListItem,
-    ConversationOut,
     Message,
 )
 from app.schemas.user import UserDetails
@@ -57,7 +57,7 @@ def test_create_conversation_success(
 ):
     conv_id = str(uuid.uuid4())
     mock_user_repo.get_by_id.return_value = True
-    mock_chat_service.create_conversation.return_value = ConversationOut(
+    mock_chat_service.create_conversation.return_value = ConversationCreateResponse(
         conversation_id=conv_id, created=True
     )
 
@@ -75,7 +75,7 @@ def test_create_conversation_returns_existing(
 ):
     conv_id = str(uuid.uuid4())
     mock_user_repo.get_by_id.return_value = True
-    mock_chat_service.create_conversation.return_value = ConversationOut(
+    mock_chat_service.create_conversation.return_value = ConversationCreateResponse(
         conversation_id=conv_id, created=False
     )
 
