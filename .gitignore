@@ -114,3 +114,5 @@ pnpm-debug.log*
 **/.terraform/*
 *.tfstate
 *.tfstate.*
+
+.claude
