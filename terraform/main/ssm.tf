@@ -144,3 +144,9 @@ resource "aws_ssm_parameter" "refresh_token_secret_key" {
   type  = "SecureString"
   value = var.refresh_token_secret_key # different from SECRET_KEY — generate separately
 }
+
+resource "aws_ssm_parameter" "redis_url" {
+  name  = "${local.ssm_prefix}/REDIS_URL"
+  type  = "String"
+  value = "redis://redis:6379/0"
+}

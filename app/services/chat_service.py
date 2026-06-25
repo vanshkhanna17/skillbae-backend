@@ -46,6 +46,20 @@ class ChatsService:
     async def mark_messages_read(
         self, conversation_id: str, user_id: int, last_read_message_id: str
     ):
-        return await self.chats_repo.mark_messages_read(
+        response, rows_updated = await self.chats_repo.mark_messages_read(
             conversation_id, user_id, last_read_message_id
         )
+        if rows_updated > 0:
+            message_json = json.dumps({
+                "type": "read_receipt",
+                "payload": {
+                    "conversation_id": conversation_id,
+                    "reader_id": user_id,
+                    "last_read_message_id": response.last_read_message_id,
+                    "last_read_at": response.last_read_at,
+                },
+            })
+            await self.redis_repo.publish_content(
+                channel=f"conv:{conversation_id}", content=message_json
+            )
+        return response

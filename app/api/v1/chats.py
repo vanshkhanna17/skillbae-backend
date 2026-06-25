@@ -103,6 +103,15 @@ async def mark_message_read(
     chat_service: chatService,
     data: MarkReadRequest,
 ) -> MarkReadResponse:
+    is_member = await chat_service.is_conversation_member(
+        conversation_id, current_user.id
+    )
+    if not is_member:
+        raise AppException(
+            status_code=403,
+            error="Forbidden",
+            message="User not part of the conversation",
+        )
     return await chat_service.mark_messages_read(
         conversation_id, current_user.id, data.last_read_message_id
     )

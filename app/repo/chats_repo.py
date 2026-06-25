@@ -1,6 +1,7 @@
 import base64
 import json
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
@@ -309,7 +310,7 @@ class ChatsRepo:
 
     async def mark_messages_read(
         self, conversation_id: str, user_id: int, last_read_message_id: str
-    ) -> MarkReadResponse:
+    ) -> tuple[MarkReadResponse, Any | int]:
         msg_result = await self.session.execute(
             select(Messages.sequence).where(
                 Messages.id == last_read_message_id,
@@ -319,7 +320,7 @@ class ChatsRepo:
         new_msg_seq = msg_result.scalar_one_or_none()
         if not new_msg_seq:
             raise AppException(
-                status_code=404,
+                status_code=400,
                 error="Not Found",
                 message="Message not found in this conversation",
             )
@@ -344,19 +345,6 @@ class ChatsRepo:
             )
         )
         rows_updated: int = result.rowcount  # type: ignore[assignment]
-        if rows_updated == 0:
-            member_check = await self.session.execute(
-                select(ConversationMembers.conversation_id).where(
-                    ConversationMembers.conversation_id == conversation_id,
-                    ConversationMembers.user_id == user_id,
-                )
-            )
-            if not member_check.scalar_one_or_none():
-                raise AppException(
-                    status_code=403,
-                    error="Forbidden",
-                    message="Not a member of this conversation",
-                )
         await self.session.commit()
         current = await self.session.execute(
             select(
@@ -371,4 +359,4 @@ class ChatsRepo:
         return MarkReadResponse(
             last_read_message_id=str(row.last_read_message_id),
             last_read_at=row.last_read_at,
-        )
+        ), rows_updated
