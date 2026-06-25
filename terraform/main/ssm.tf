@@ -71,13 +71,13 @@ resource "aws_ssm_parameter" "refresh_token_expire_days" {
 resource "aws_ssm_parameter" "cookie_secure" {
   name  = "${local.ssm_prefix}/COOKIE_SECURE"
   type  = "String"
-  value = "False" # HTTP only for staging — set True when HTTPS is added
+  value = "True" # nginx terminates TLS — browser sees HTTPS, Secure flag works
 }
 
 resource "aws_ssm_parameter" "cookie_samesite" {
   name  = "${local.ssm_prefix}/COOKIE_SAMESITE"
   type  = "String"
-  value = "Lax"
+  value = "None" # required for cross-origin cookie sharing (e.g. local frontend → staging backend)
 }
 
 resource "aws_ssm_parameter" "cookie_path" {
