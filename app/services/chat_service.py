@@ -23,7 +23,7 @@ class ChatsService:
     ):
         message = await self.chats_repo.send_message(conversation_id, user_id, data)
         message_json = json.dumps({
-            "type": "new_message",
+            "topic": "new_message",
             "payload": json.loads(message.model_dump_json()),
         })
         await self.redis_repo.publish_content(
@@ -51,12 +51,14 @@ class ChatsService:
         )
         if rows_updated > 0:
             message_json = json.dumps({
-                "type": "read_receipt",
+                "topic": "read_receipt",
                 "payload": {
                     "conversation_id": conversation_id,
                     "reader_id": user_id,
                     "last_read_message_id": response.last_read_message_id,
-                    "last_read_at": response.last_read_at,
+                    "last_read_at": response.last_read_at.isoformat()
+                    if response.last_read_at
+                    else None,
                 },
             })
             await self.redis_repo.publish_content(

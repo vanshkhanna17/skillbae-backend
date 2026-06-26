@@ -360,3 +360,12 @@ class ChatsRepo:
             last_read_message_id=str(row.last_read_message_id),
             last_read_at=row.last_read_at,
         ), rows_updated
+
+    async def get_conversation_members(self, conversation_id: str):
+        members = await self.session.execute(
+            select(ConversationMembers).where(
+                ConversationMembers.conversation_id == conversation_id
+            )
+        )
+
+        return list(members.scalars().all())

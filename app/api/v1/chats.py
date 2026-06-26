@@ -13,6 +13,7 @@ from app.schemas.chats import (
     MarkReadResponse,
     Message,
     MessageCreateRequest,
+    MessageList,
 )
 from app.schemas.user import UserDetails
 from app.services.chat_service import ChatsService
@@ -83,7 +84,7 @@ async def get_conversation_messages(
     chat_service: chatService,
     cursor: str | None = Query(None, description="Pagination cursor"),
     limit: int = Query(20, ge=1, le=100, description="Number of messages to return"),
-):
+) -> MessageList:
     is_member = await chat_service.is_conversation_member(
         conversation_id, current_user.id
     )
