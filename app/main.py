@@ -22,7 +22,7 @@ from app.api.v1.users import router as user_router
 from app.api.v1.ws import router as ws_router
 from app.core.config import settings
 from app.core.limiter import limiter
-from app.core.redis import get_redis_client
+from app.core.redis import close_redis_client, get_redis_client
 from app.core.subscriber import redis_subscriber
 
 logging.basicConfig(
@@ -39,7 +39,7 @@ async def redis_lifespan(app: FastAPI):
     task = asyncio.create_task(redis_subscriber())
     yield
     task.cancel()
-    await redis.close()
+    await close_redis_client()
 
 
 app = FastAPI(

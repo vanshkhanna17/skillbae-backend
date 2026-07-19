@@ -101,8 +101,8 @@ class TestWebSocket:
         client = make_ws_client(test_db_engine, fake_redis)
         token = make_valid_token(user_id=1)
 
-        with client.websocket_connect(f"{WS_PATH}?token={token}"):
-            # Inside the with = connection is live
+        with client.websocket_connect(f"{WS_PATH}?token={token}") as ws:
+            wait_for_connected(ws)  # ensure redis.set() has run before asserting
             assert fake_redis.store.get("presence:1") == "1"  # ✅ set on connect
 
         # Outside the with = disconnect fired → last tab → deleted
@@ -160,8 +160,10 @@ class TestWebSocket:
         client_a = TestClient(app, raise_server_exceptions=False)
         client_b = TestClient(app, raise_server_exceptions=False)
 
-        with client_a.websocket_connect(f"{WS_PATH}?token={token}"):
-            with client_b.websocket_connect(f"{WS_PATH}?token={token}"):
+        with client_a.websocket_connect(f"{WS_PATH}?token={token}") as ws_a:
+            wait_for_connected(ws_a)
+            with client_b.websocket_connect(f"{WS_PATH}?token={token}") as ws_b:
+                wait_for_connected(ws_b)
                 assert len(ws_connection_manger.active.get(1, [])) == 2
                 assert fake_redis.store.get("presence:1") == "1"
 
