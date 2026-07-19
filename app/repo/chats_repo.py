@@ -369,3 +369,15 @@ class ChatsRepo:
         )
 
         return list(members.scalars().all())
+
+    async def get_contacts(self, user_id: int) -> list[int]:
+        cm1 = aliased(ConversationMembers)
+        cm2 = aliased(ConversationMembers)
+        result = await self.session.execute(
+            select(cm2.user_id)
+            .distinct()
+            .select_from(cm1)  # ← add this
+            .join(cm2, cm1.conversation_id == cm2.conversation_id)
+            .where(cm1.user_id == user_id, cm2.user_id != user_id)
+        )
+        return list(result.scalars().all())

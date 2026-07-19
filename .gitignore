@@ -115,4 +115,4 @@ pnpm-debug.log*
 *.tfstate
 *.tfstate.*
 
-.claude
+.claude*

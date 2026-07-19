@@ -16,8 +16,12 @@ class CommentsRepo(BaseRepo):
         try:
             self.session.add(new_comment)
             await self.session.commit()
-            await self.session.refresh(new_comment)
-            return new_comment
+            result = await self.session.execute(
+                select(Comments)
+                .where(Comments.id == new_comment.id)
+                .options(selectinload(Comments.user))
+            )
+            return result.scalar_one()
         except DatabaseError as e:
             await self.session.rollback()
             raise e

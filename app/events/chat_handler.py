@@ -31,5 +31,5 @@ async def handle_read_receipts(channel: str, payload: dict):
         )
 
 
-event_bus.register("conv", "new_messaege", handle_new_message)
+event_bus.register("conv", "new_message", handle_new_message)
 event_bus.register("conv", "read_receipt", handle_read_receipts)
