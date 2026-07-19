@@ -34,7 +34,6 @@ async def websocket_endpoint(
     token: str | None = Depends(get_token_from_ws),
     chat_repo: ChatsRepo = Depends(get_chats_repo),
 ):
-
     if not token:
         await ws.accept()
         await ws.close(code=4001)

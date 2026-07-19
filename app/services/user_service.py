@@ -4,7 +4,7 @@ from fastapi import status
 
 from app.core.exceptions import AppException
 from app.repo.user_repo import UserRepo
-from app.schemas.user import UserDetails
+from app.schemas.user import UserDetails, UserPublic, UserSearchResponse
 
 
 class UserService:
@@ -27,6 +27,14 @@ class UserService:
                 message="User doesn't exist",
             )
         return UserDetails.model_validate(user)
+
+    async def search_users(
+        self, query: str, exclude_user_id: int, limit: int
+    ) -> UserSearchResponse:
+        users = await self.repo.search_users(query, exclude_user_id, limit)
+        return UserSearchResponse(
+            items=[UserPublic.model_validate(user) for user in users]
+        )
 
     async def update_user(self, user_id: int, data: dict[str, Any]) -> UserDetails:
         updated = await self.repo.update_user(user_id, data)

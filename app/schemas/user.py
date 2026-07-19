@@ -34,6 +34,20 @@ class UserDetails(BaseSchema):
     full_name: Optional[str] = None
 
 
+class UserPublic(BaseSchema):
+    id: int
+    username: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    profile: Optional[str] = None
+
+
+class UserSearchResponse(BaseSchema):
+    items: list[UserPublic]
+
+
 class UserCreate(BaseSchema):
     email: EmailStr
     username: str = Field(..., min_length=3, max_length=30)

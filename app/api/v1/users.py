@@ -6,7 +6,7 @@ from app.core.deps import get_current_user, get_user_service
 from app.core.username import validate_username
 from app.db.session import get_session
 from app.models.user import User
-from app.schemas.user import UserDetails
+from app.schemas.user import UserDetails, UserSearchResponse
 from app.services.user_service import UserService
 
 router: APIRouter = APIRouter()
@@ -17,6 +17,16 @@ async def get_user(
     current_user: UserDetails = Depends(get_current_user),
 ) -> UserDetails:
     return current_user
+
+
+@router.get(path="/search", response_model=UserSearchResponse)
+async def search_users(
+    q: str = Query(..., min_length=3, max_length=30),
+    limit: int = Query(10, ge=1, le=25),
+    current_user: UserDetails = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service),
+) -> UserSearchResponse:
+    return await user_service.search_users(q, current_user.id, limit)
 
 
 @router.put(path="/categories-update")

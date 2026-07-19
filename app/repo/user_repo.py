@@ -1,6 +1,6 @@
 from typing import Any, Optional
 
-from sqlalchemy import delete, insert, select
+from sqlalchemy import delete, insert, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -49,6 +49,29 @@ class UserRepo(BaseRepo):
         query = select(User).where(User.username == username)
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
+
+    async def search_users(
+        self, query: str, exclude_user_id: int, limit: int
+    ) -> list[User]:
+        escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"{escaped}%"
+        # ponytail: prefix ILIKE + seq scan; add a pg_trgm GIN or
+        # varchar_pattern_ops index via Alembic when user count warrants
+        stmt = (
+            select(User)
+            .where(
+                User.id != exclude_user_id,
+                or_(
+                    User.username.ilike(pattern, escape="\\"),
+                    User.first_name.ilike(pattern, escape="\\"),
+                    User.last_name.ilike(pattern, escape="\\"),
+                ),
+            )
+            .order_by(User.username)
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
 
     async def check_email_exists(self, email: str):
         return (await self.get_user_by_email(email)) is not None

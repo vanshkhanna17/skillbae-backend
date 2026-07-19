@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from app.schemas.base import BaseSchema
-from app.schemas.user import UserDetails
+from app.schemas.user import UserPublic
 
 
 class ConversationCreateRequest(BaseSchema):
@@ -30,7 +30,7 @@ class Message(BaseSchema):
 
 class ConversationListItem(BaseSchema):
     conversation_id: str
-    other_user: UserDetails
+    other_user: UserPublic
     last_message: str | None
     last_message_at: datetime | None
     unread_count: int

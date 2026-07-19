@@ -20,7 +20,7 @@ from app.schemas.chats import (
     MessageCreateRequest,
     MessageList,
 )
-from app.schemas.user import UserDetails
+from app.schemas.user import UserPublic
 
 
 class ChatsRepo:
@@ -261,7 +261,7 @@ class ChatsRepo:
         conversations: list[ConversationListItem] = [
             ConversationListItem(
                 conversation_id=str(item.conversation_id),
-                other_user=UserDetails.model_validate(item.User),
+                other_user=UserPublic.model_validate(item.User),
                 last_message=item.last_message,
                 last_message_at=item.last_message_at,
                 unread_count=item.unread_count or 0,
